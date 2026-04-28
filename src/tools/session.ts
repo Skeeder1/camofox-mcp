@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { AppError, okResult, toErrorResult } from "../errors.js";
-import { clearTrackedTabsByUserId, getAllTrackedTabs, getTrackedTab, incrementToolCall } from "../state.js";
+import { clearTrackedTabsByUserId, getAllTrackedTabs, getTrackedTab, incrementToolCall, setTabTask, clearTabTask, getTabTaskContext } from "../state.js";
 import { saveProfile, withAutoTimeout } from "../profiles.js";
 import type { ToolDeps } from "../server.js";
 
@@ -154,6 +154,101 @@ export function registerSessionTools(server: McpServer, deps: ToolDeps): void {
         clearTrackedTabsByUserId(parsed.userId);
 
         return okResult(result);
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "set_task_context",
+    "Persist a high-level task descriptor on a tab. Subsequent snapshots can inject this as a banner via current_task. Helps the model stay focused across multi-step flows. Pass task='' to clear.",
+    {
+      tabId: z.string().min(1).describe("Tab ID from create_tab"),
+      task: z.string().max(500).describe("Short task description, e.g. 'apply LeBonCoin filters: Renault, 2018-2022, <100k km'. Empty string clears the task.")
+    },
+    async (input: unknown) => {
+      try {
+        const parsed = z.object({
+          tabId: z.string().min(1),
+          task: z.string().max(500)
+        }).parse(input);
+        // Touch the tab to make sure it exists.
+        const tracked = getTrackedTab(parsed.tabId);
+        if (parsed.task.trim().length === 0) {
+          clearTabTask(parsed.tabId);
+        } else {
+          setTabTask(parsed.tabId, parsed.task);
+        }
+        incrementToolCall(parsed.tabId);
+        return okResult({
+          ok: true,
+          tabId: parsed.tabId,
+          currentTask: parsed.task.trim().length === 0 ? null : parsed.task.trim().slice(0, 500),
+          url: tracked.url
+        });
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "get_task_context",
+    "Read the persistent task context for a tab: current task, last action, recent history (most recent first, capped at CAMOFOX_TASK_HISTORY_MAX = 10).",
+    {
+      tabId: z.string().min(1).describe("Tab ID from create_tab")
+    },
+    async (input: unknown) => {
+      try {
+        const parsed = z.object({ tabId: z.string().min(1) }).parse(input);
+        const ctx = getTabTaskContext(parsed.tabId);
+        return okResult(ctx);
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "diagnose_failure",
+    "Run a fast post-failure diagnostic on a tab: returns task context, last action, current URL, dialog visibility, and a short rule-based hint (Radix toggle, dialog blocker, drift). Call this AFTER a click/navigate that returned an unexpected result, BEFORE retrying. Cheap — no LLM, no screenshot.",
+    {
+      tabId: z.string().min(1).describe("Tab ID from create_tab")
+    },
+    async (input: unknown) => {
+      try {
+        const parsed = z.object({ tabId: z.string().min(1) }).parse(input);
+        const tracked = getTrackedTab(parsed.tabId);
+        const ctx = getTabTaskContext(parsed.tabId);
+        const dialog = await deps.client.snapshotDialog(parsed.tabId, tracked.userId).catch(() => null);
+        const hints: string[] = [];
+        if (dialog && dialog.snapshot) {
+          hints.push(`open_dialog (${dialog.selector}) — capture it via snapshot_dialog and dismiss before retrying.`);
+        }
+        const lastAction = ctx.lastAction ?? "";
+        if (/click .* \(force\)/i.test(lastAction) && /verified\b/.test(lastAction) === false) {
+          hints.push("last click used force fallback but was NOT verified — re-issue with verify:true.");
+        }
+        if (/click .* (locator|jsdispatch)/i.test(lastAction)) {
+          hints.push("standard click chain — if state did not change, re-issue with force:true and verify:true (likely Radix controlled component).");
+        }
+        const recent = (ctx.taskHistory ?? []).slice(0, 3).map((e) => `${e.kind}: ${e.text}`);
+        if (recent.length >= 2 && recent.every((r) => r.startsWith("action: click "))) {
+          hints.push("multiple consecutive click attempts on this tab — STOP retrying the same element. Re-snapshot or call snapshot_dialog.");
+        }
+        if (hints.length === 0) hints.push("no obvious blocker. Take a fresh snapshot with current_task and inspect new_elements (* markers).");
+        incrementToolCall(parsed.tabId);
+        return okResult({
+          tabId: parsed.tabId,
+          url: tracked.url,
+          currentTask: ctx.currentTask ?? null,
+          lastAction: ctx.lastAction ?? null,
+          dialogVisible: Boolean(dialog && dialog.snapshot),
+          dialogSelector: dialog?.selector ?? null,
+          recentHistory: recent,
+          hints
+        });
       } catch (error) {
         return toErrorResult(error);
       }

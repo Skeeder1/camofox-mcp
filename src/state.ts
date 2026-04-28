@@ -88,6 +88,71 @@ export function updateRefsCount(tabId: string, refsCount: number): void {
   tab.refsCount = refsCount;
 }
 
+const TASK_HISTORY_MAX = parseEnvInt("CAMOFOX_TASK_HISTORY_MAX", 10, 1);
+
+export function setTabTask(tabId: string, task: string): void {
+  const tab = getTrackedTab(tabId);
+  const trimmed = task.trim().slice(0, 500);
+  tab.currentTask = trimmed;
+  tab.taskHistory = pushTaskHistory(tab.taskHistory, { ts: Date.now(), kind: "task", text: trimmed });
+}
+
+export function clearTabTask(tabId: string): void {
+  const tab = getTrackedTab(tabId);
+  tab.currentTask = undefined;
+}
+
+export function recordTabAction(tabId: string, action: string): void {
+  // Best-effort: don't throw if the tab is no longer tracked (e.g. after toggle_display).
+  let tab: TabInfo | undefined;
+  try {
+    tab = getTrackedTab(tabId);
+  } catch {
+    return;
+  }
+  const trimmed = action.trim().slice(0, 200);
+  tab.lastAction = trimmed;
+  tab.taskHistory = pushTaskHistory(tab.taskHistory, { ts: Date.now(), kind: "action", text: trimmed });
+}
+
+export function setLastSnapshotHash(tabId: string, hash: string): void {
+  let tab: TabInfo | undefined;
+  try {
+    tab = getTrackedTab(tabId);
+  } catch {
+    return;
+  }
+  tab.lastSnapshotHash = hash;
+}
+
+export function getTabTaskContext(tabId: string): {
+  tabId: string;
+  url: string;
+  currentTask?: string;
+  lastAction?: string;
+  taskHistory: TabInfo["taskHistory"];
+  lastSnapshotHash?: string;
+} {
+  const tab = getTrackedTab(tabId);
+  return {
+    tabId: tab.tabId,
+    url: tab.url,
+    currentTask: tab.currentTask,
+    lastAction: tab.lastAction,
+    taskHistory: tab.taskHistory ?? [],
+    lastSnapshotHash: tab.lastSnapshotHash
+  };
+}
+
+function pushTaskHistory(
+  current: TabInfo["taskHistory"],
+  entry: NonNullable<TabInfo["taskHistory"]>[number]
+): TabInfo["taskHistory"] {
+  const next = current ? [entry, ...current] : [entry];
+  if (next.length > TASK_HISTORY_MAX) next.length = TASK_HISTORY_MAX;
+  return next;
+}
+
 export function setupCleanup(closeTab: (tabId: string, userId: string) => Promise<void>): void {
   const sweep = () => {
     if (TAB_TTL_MS <= 0) {

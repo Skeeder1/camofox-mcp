@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { spawn } from "node:child_process";
 
 import { AppError } from "./errors.js";
 import type {
@@ -12,6 +13,8 @@ import type {
   NavigateResponse,
   PresetsResponse,
   SnapshotResponse,
+  SnapshotScopedParams,
+  SnapshotDialogResponse,
   StatsResponse,
   TabResponse
   ,
@@ -87,19 +90,33 @@ const ClickRawResponseSchema = z
   .object({
     success: z.boolean().optional(),
     navigated: z.boolean().optional(),
-    refsAvailable: z.boolean().optional()
+    refsAvailable: z.boolean().optional(),
+    strategy: z.enum(["locator", "force", "mouse", "jsdispatch", "keyboard-space"]).optional(),
+    attempts: z.number().int().nonnegative().optional(),
+    verifiedStateChange: z.boolean().optional()
   })
   .passthrough();
 
 const SnapshotRawResponseSchema = z
   .object({
     url: z.string().optional(),
-    snapshot: z.string().optional(),
+    snapshot: z.string().nullable().optional(),
     refsCount: z.number().optional(),
     truncated: z.boolean().optional(),
     totalChars: z.number().optional(),
     hasMore: z.boolean().optional(),
-    nextOffset: z.number().nullable().optional()
+    nextOffset: z.number().nullable().optional(),
+    scoped: z.boolean().optional(),
+    newElementsCount: z.number().optional()
+  })
+  .passthrough();
+
+const SnapshotDialogRawResponseSchema = z
+  .object({
+    url: z.string().optional(),
+    snapshot: z.string().nullable().optional(),
+    refsCount: z.number().optional(),
+    selector: z.string().nullable().optional()
   })
   .passthrough();
 
@@ -284,14 +301,56 @@ export class CamofoxClient {
 
   private readonly apiKey?: string;
 
+  private readonly browserServerPath?: string;
+
+  private startupPromise: Promise<void> | null = null;
+
   constructor(config: Config) {
     this.baseUrl = config.camofoxUrl.replace(/\/$/, "");
     this.timeout = config.timeout;
     this.apiKey = config.apiKey;
+    this.browserServerPath = config.browserServerPath;
   }
 
   async healthCheck(): Promise<HealthResponse> {
     return this.requestJson("/health", { method: "GET" }, HealthResponseSchema);
+  }
+
+  async stopBrowser(): Promise<void> {
+    await this.requestNoContent("/stop", { method: "POST" });
+  }
+
+  private ensureRunning(): Promise<void> {
+    if (!this.startupPromise) {
+      this.startupPromise = this.doStart().finally(() => {
+        this.startupPromise = null;
+      });
+    }
+    return this.startupPromise;
+  }
+
+  private async doStart(): Promise<void> {
+    if (!this.browserServerPath) {
+      throw new AppError("CONNECTION_REFUSED", "CamoFox browser server is not running. Set CAMOFOX_BROWSER_SERVER_PATH to enable auto-start.");
+    }
+
+    spawn("node", [this.browserServerPath], {
+      env: { ...process.env, CAMOFOX_HEADLESS: process.env.CAMOFOX_HEADLESS ?? "false" },
+      stdio: "ignore",
+      detached: false
+    });
+
+    for (let i = 0; i < 30; i++) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      try {
+        const r = await fetch(`${this.baseUrl}/health`, { signal: AbortSignal.timeout(2000) });
+        if (r.ok) return;
+      } catch {
+        // still starting
+      }
+    }
+
+    throw new AppError("CONNECTION_REFUSED", "CamoFox browser server failed to start after 15s");
   }
 
   async listPresets(): Promise<PresetsResponse> {
@@ -412,7 +471,10 @@ export class CamofoxClient {
     return {
       success: response.success ?? true,
       navigated: response.navigated ?? false,
-      refsAvailable: response.refsAvailable
+      refsAvailable: response.refsAvailable,
+      strategy: response.strategy,
+      attempts: response.attempts,
+      verifiedStateChange: response.verifiedStateChange
     };
   }
 
@@ -610,18 +672,45 @@ export class CamofoxClient {
     );
   }
 
-  async snapshot(tabId: string, userId: string, offset?: number): Promise<SnapshotResponse> {
-    const params = new URLSearchParams({ userId });
-    if (offset !== undefined) {
-      params.set("offset", String(offset));
-    }
+  async snapshot(
+    tabId: string,
+    userId: string,
+    offset?: number,
+    scopedParams?: SnapshotScopedParams
+  ): Promise<SnapshotResponse> {
+    const hasScoped = scopedParams && (
+      scopedParams.focusSelector !== undefined ||
+      scopedParams.rolesFilter !== undefined ||
+      scopedParams.maxLines !== undefined ||
+      scopedParams.currentTask !== undefined ||
+      scopedParams.lastAction !== undefined
+    );
 
-    const response = await this.requestJson(
-      `/tabs/${encodeURIComponent(tabId)}/snapshot?${params.toString()}`,
-      {
-      method: "GET"
-      }
-    , SnapshotRawResponseSchema);
+    const response = hasScoped
+      ? await this.requestJson(
+          `/tabs/${encodeURIComponent(tabId)}/snapshot`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              userId,
+              focusSelector: scopedParams!.focusSelector,
+              maxLines: scopedParams!.maxLines,
+              rolesFilter: scopedParams!.rolesFilter,
+              currentTask: scopedParams!.currentTask,
+              lastAction: scopedParams!.lastAction
+            })
+          },
+          SnapshotRawResponseSchema
+        )
+      : await (async () => {
+          const params = new URLSearchParams({ userId });
+          if (offset !== undefined) params.set("offset", String(offset));
+          return this.requestJson(
+            `/tabs/${encodeURIComponent(tabId)}/snapshot?${params.toString()}`,
+            { method: "GET" },
+            SnapshotRawResponseSchema
+          );
+        })();
 
     return {
       url: response.url ?? "",
@@ -630,7 +719,26 @@ export class CamofoxClient {
       truncated: response.truncated,
       totalChars: response.totalChars,
       hasMore: response.hasMore,
-      nextOffset: response.nextOffset
+      nextOffset: response.nextOffset,
+      scoped: response.scoped,
+      newElementsCount: response.newElementsCount
+    };
+  }
+
+  async snapshotDialog(tabId: string, userId: string): Promise<SnapshotDialogResponse> {
+    const response = await this.requestJson(
+      `/tabs/${encodeURIComponent(tabId)}/snapshot/dialog`,
+      {
+        method: "POST",
+        body: JSON.stringify({ userId })
+      },
+      SnapshotDialogRawResponseSchema
+    );
+    return {
+      url: response.url ?? "",
+      snapshot: response.snapshot ?? null,
+      refsCount: response.refsCount ?? 0,
+      selector: response.selector ?? null
     };
   }
 
@@ -648,14 +756,34 @@ export class CamofoxClient {
     );
   }
 
-  async screenshot(tabId: string, userId: string): Promise<Buffer> {
+  async screenshot(
+    tabId: string,
+    userId: string,
+    options?: {
+      fullPage?: boolean;
+      type?: "png" | "jpeg";
+      quality?: number;
+      clip?: { x: number; y: number; width: number; height: number };
+    }
+  ): Promise<{ buffer: Buffer; mime: "image/png" | "image/jpeg" }> {
+    const params = new URLSearchParams({ userId });
+    if (options?.fullPage) params.set("fullPage", "true");
+    if (options?.type === "jpeg") {
+      params.set("type", "jpeg");
+      if (typeof options.quality === "number") params.set("quality", String(options.quality));
+    }
+    if (options?.clip) {
+      params.set("clipX", String(options.clip.x));
+      params.set("clipY", String(options.clip.y));
+      params.set("clipW", String(options.clip.width));
+      params.set("clipH", String(options.clip.height));
+    }
     const binary = await this.requestBinary(
-      `/tabs/${encodeURIComponent(tabId)}/screenshot?userId=${encodeURIComponent(userId)}`,
-      {
-      method: "GET"
-      }
+      `/tabs/${encodeURIComponent(tabId)}/screenshot?${params.toString()}`,
+      { method: "GET" }
     );
-    return Buffer.from(binary);
+    const mime: "image/png" | "image/jpeg" = options?.type === "jpeg" ? "image/jpeg" : "image/png";
+    return { buffer: Buffer.from(binary), mime };
   }
 
   async getLinks(tabId: string, userId: string): Promise<LinkResponse> {
@@ -940,7 +1068,7 @@ export class CamofoxClient {
     await this.request(path, init);
   }
 
-  private async request(path: string, init: RequestInit & { requireApiKey?: boolean }): Promise<Response> {
+  private async request(path: string, init: RequestInit & { requireApiKey?: boolean }, isRetry = false): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeout);
 
@@ -973,6 +1101,11 @@ export class CamofoxClient {
       return response;
     } catch (error) {
       if (error instanceof AppError) {
+        // On first connection failure, try to start the server and retry once
+        if (error.code === "CONNECTION_REFUSED" && !isRetry) {
+          await this.ensureRunning();
+          return this.request(path, init, true);
+        }
         throw error;
       }
 
@@ -981,7 +1114,12 @@ export class CamofoxClient {
       }
 
       if (error instanceof Error) {
-        throw new AppError("CONNECTION_REFUSED", `Failed to connect to CamoFox API: ${error.message}`);
+        const appErr = new AppError("CONNECTION_REFUSED", `Failed to connect to CamoFox API: ${error.message}`);
+        if (!isRetry) {
+          await this.ensureRunning();
+          return this.request(path, init, true);
+        }
+        throw appErr;
       }
 
       throw new AppError("INTERNAL_ERROR", "Unknown error while calling CamoFox API");

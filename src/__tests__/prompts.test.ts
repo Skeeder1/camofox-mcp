@@ -17,17 +17,23 @@ describe("prompts", () => {
     };
   });
 
-  it("registerPrompts() registers 3 prompts", () => {
+  it("registerPrompts() registers 5 prompts", () => {
     const server = {
       registerPrompt: vi.fn()
     };
 
     registerPrompts(server as unknown as Parameters<typeof registerPrompts>[0], deps);
 
-    expect(server.registerPrompt).toHaveBeenCalledTimes(3);
+    expect(server.registerPrompt).toHaveBeenCalledTimes(5);
 
     const names = server.registerPrompt.mock.calls.map((call) => call[0]);
-    expect(names).toEqual(["setup-verify", "troubleshoot", "quick-start"]);
+    expect(names).toEqual([
+      "setup-verify",
+      "troubleshoot",
+      "quick-start",
+      "agent-system-lean",
+      "agent-system-full"
+    ]);
   });
 
   it("each prompt callback returns a valid GetPromptResult", () => {

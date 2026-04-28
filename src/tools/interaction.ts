@@ -2,25 +2,31 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { okResult, toErrorResult } from "../errors.js";
-import { getTrackedTab, incrementToolCall } from "../state.js";
+import { getTrackedTab, incrementToolCall, recordTabAction } from "../state.js";
 import type { ToolDeps } from "../server.js";
 
 export function registerInteractionTools(server: McpServer, deps: ToolDeps): void {
   server.tool(
     "click",
-    "Click an element. Provide either ref (from snapshot) or CSS selector. Use snapshot first to discover element refs.",
+    "Click an element. Provide either ref (from snapshot) or CSS selector. Use snapshot first to discover element refs. Optional: timeout (ms), force (skip plain locator click), verify (re-check aria-checked/data-state/value/URL after click for Radix UI checkboxes, switches, etc.).",
     {
       tabId: z.string().min(1).describe("Tab ID from create_tab"),
       ref: z.string().min(1).optional().describe("Element ref from snapshot (e.g. 'e1', 'e2')"),
-      selector: z.string().min(1).optional().describe("CSS selector (e.g. 'button.submit', '#login')")
+      selector: z.string().min(1).optional().describe("CSS selector (e.g. 'button.submit', '#login')"),
+      timeout: z.number().int().min(1000).max(30000).optional().describe("Per-strategy timeout in ms (1000-30000, default 5000). Increase for slow-rendering elements."),
+      force: z.boolean().optional().describe("Skip plain locator click and start at force/mouse fallback chain. Use when standard click is known to fail (Radix dialog buttons, autocomplete options)."),
+      verify: z.boolean().optional().describe("Verify a state change after click (aria-checked, data-state, value, URL). Returns verifiedStateChange flag. Recommended for Radix checkboxes and switches.")
     },
     async (input: unknown) => {
       try {
         const parsed = z
           .object({
-            tabId: z.string().min(1).describe("Tab ID from create_tab"),
-            ref: z.string().min(1).optional().describe("Element ref from snapshot (e.g. 'e1', 'e2')"),
-            selector: z.string().min(1).optional().describe("CSS selector (e.g. 'button.submit', '#login')")
+            tabId: z.string().min(1),
+            ref: z.string().min(1).optional(),
+            selector: z.string().min(1).optional(),
+            timeout: z.number().int().min(1000).max(30000).optional(),
+            force: z.boolean().optional(),
+            verify: z.boolean().optional()
           })
           .refine((data) => Boolean(data.ref || data.selector), {
             message: "Either 'ref' or 'selector' is required"
@@ -30,13 +36,25 @@ export function registerInteractionTools(server: McpServer, deps: ToolDeps): voi
         const tracked = getTrackedTab(parsed.tabId);
         const result = await deps.client.click(parsed.tabId, {
           ref: parsed.ref,
-          selector: parsed.selector
+          selector: parsed.selector,
+          timeout: parsed.timeout,
+          force: parsed.force,
+          verify: parsed.verify
         }, tracked.userId);
         incrementToolCall(parsed.tabId);
+        recordTabAction(
+          parsed.tabId,
+          `click ${parsed.ref ? `ref=${parsed.ref}` : `selector=${parsed.selector}`}` +
+            (result.strategy ? ` (${result.strategy})` : "") +
+            (result.verifiedStateChange === true ? " verified" : "")
+        );
         return okResult({
           success: result.success,
           navigated: result.navigated,
-          refsAvailable: result.refsAvailable
+          refsAvailable: result.refsAvailable,
+          strategy: result.strategy,
+          attempts: result.attempts,
+          verifiedStateChange: result.verifiedStateChange
         });
       } catch (error) {
         return toErrorResult(error);
@@ -69,6 +87,10 @@ export function registerInteractionTools(server: McpServer, deps: ToolDeps): voi
         const tracked = getTrackedTab(parsed.tabId);
         await deps.client.smartTypeText(parsed.tabId, { ref: parsed.ref, selector: parsed.selector }, parsed.text, tracked.userId);
         incrementToolCall(parsed.tabId);
+        recordTabAction(
+          parsed.tabId,
+          `type ${parsed.ref ? `ref=${parsed.ref}` : `selector=${parsed.selector}`} text="${parsed.text.slice(0, 60)}${parsed.text.length > 60 ? "…" : ""}"`
+        );
         return okResult({ success: true });
       } catch (error) {
         return toErrorResult(error);

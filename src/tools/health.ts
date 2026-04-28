@@ -22,4 +22,13 @@ export function registerHealthTools(server: McpServer, deps: ToolDeps): void {
       return toErrorResult(error);
     }
   });
+
+  server.tool("stop_browser", "Gracefully shut down the CamoFox browser server. All sessions will be closed. The server will auto-start on the next tool call.", {}, async () => {
+    try {
+      await deps.client.stopBrowser();
+      return okResult({ ok: true, stopped: true });
+    } catch (error) {
+      return toErrorResult(error);
+    }
+  });
 }

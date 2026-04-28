@@ -10,7 +10,7 @@
   },
   "type": "module",
   "scripts": {
-    "build": "tsc && node ./scripts/ensure-bin-exec.mjs",
+    "build": "tsc && mkdir -p dist/prompts && cp src/prompts/*.md dist/prompts/ && node ./scripts/ensure-bin-exec.mjs",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "vitest run",

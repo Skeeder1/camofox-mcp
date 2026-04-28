@@ -9,6 +9,7 @@ export interface Config {
   httpPort: number;
   httpHost: string;
   httpRateLimit: number;
+  browserServerPath?: string;
 }
 
 export interface HealthResponse {
@@ -53,15 +54,29 @@ export interface NavigateResponse {
   refsAvailable?: boolean;
 }
 
+export type ClickStrategy = "locator" | "force" | "mouse" | "jsdispatch" | "keyboard-space";
+
 export interface ClickParams {
   ref?: string;
   selector?: string;
+  /** Per-strategy Playwright timeout in ms. 1000-30000 (default 5000). */
+  timeout?: number;
+  /** Skip the plain locator click and start at force/mouse fallback chain. */
+  force?: boolean;
+  /** After click, verify a state change (aria-checked, data-state, value, URL). */
+  verify?: boolean;
 }
 
 export interface ClickResponse {
   success: boolean;
   navigated: boolean;
   refsAvailable?: boolean;
+  /** Which strategy in the fallback chain ultimately succeeded. */
+  strategy?: ClickStrategy;
+  /** Total click attempts across the strategy ladder. */
+  attempts?: number;
+  /** Only present when verify=true was requested. */
+  verifiedStateChange?: boolean;
 }
 
 export interface SnapshotResponse {
@@ -72,6 +87,32 @@ export interface SnapshotResponse {
   totalChars?: number;
   hasMore?: boolean;
   nextOffset?: number | null;
+  /** True when server applied focusSelector / rolesFilter / maxLines. */
+  scoped?: boolean;
+  /** Count of lines marked with `*` (new since previous snapshot). */
+  newElementsCount?: number;
+}
+
+export interface SnapshotScopedParams {
+  /** CSS selector to scope snapshot to a subtree. */
+  focusSelector?: string;
+  /** Hard cap on lines after filtering. */
+  maxLines?: number;
+  /** Restrict YAML to nodes whose role matches one of these. */
+  rolesFilter?: string[];
+  /** Optional task descriptor — added as a YAML banner to inform the LLM. */
+  currentTask?: string;
+  /** Last action narrative (for drift detection / context). */
+  lastAction?: string;
+}
+
+export interface SnapshotDialogResponse {
+  url: string;
+  /** null when no open dialog is detected. */
+  snapshot: string | null;
+  refsCount: number;
+  /** Selector that matched (e.g. [role="dialog"][data-state="open"]). */
+  selector: string | null;
 }
 
 export interface NavigationActionResponse {
@@ -125,6 +166,21 @@ export interface TabInfo {
   visitedUrls: string[];
   toolCalls: number;
   refsCount: number;
+  /** High-level objective the agent is currently pursuing on this tab. */
+  currentTask?: string;
+  /** Rolling history of tasks/actions (capped, FIFO). Most recent first. */
+  taskHistory?: TaskHistoryEntry[];
+  /** Hash of the last full snapshot — used to skip redundant snapshot calls. */
+  lastSnapshotHash?: string;
+  /** Last completed action narrative (e.g. "click ref=e12 (force)"). */
+  lastAction?: string;
+}
+
+export interface TaskHistoryEntry {
+  ts: number;
+  /** "task" = explicit set_task_context; "action" = auto-tracked from click/type/navigate. */
+  kind: "task" | "action";
+  text: string;
 }
 
 export type SearchEngine =
