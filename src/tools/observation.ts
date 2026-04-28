@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { AppError, imageResult, okResult, toErrorResult } from "../errors.js";
+import { AppError, binaryResult, imageResult, okResult, toErrorResult } from "../errors.js";
 import { getTrackedTab, incrementToolCall, updateRefsCount, updateTabUrl } from "../state.js";
 import type { ToolDeps } from "../server.js";
 
@@ -124,19 +124,43 @@ async function waitForSelector(
 export function registerObservationTools(server: McpServer, deps: ToolDeps): void {
   server.tool(
     "snapshot",
-    "Get accessibility tree snapshot — the PRIMARY way to read page content. Returns element refs, roles, names and values. Token-efficient. Always prefer over screenshot. Refs come from the accessibility tree, so custom SPA elements may be missing; fall back to CSS selectors, camofox_wait_for_selector, or camofox_get_page_html when needed.",
+    "Get accessibility tree snapshot — the PRIMARY way to read page content. Returns element refs, roles, names and values. Token-efficient. Always prefer over screenshot. Refs come from the accessibility tree, so custom SPA elements may be missing; fall back to CSS selectors, camofox_wait_for_selector, or camofox_get_page_html when needed.\n\nTask-aware scoping (optional): pass focus_selector to limit the snapshot to a subtree (e.g. an open dialog), roles_filter to keep only specific roles (parents preserved), max_lines to cap size, current_task and last_action to inject a task banner that helps the model stay focused.",
     {
       tabId: z.string().min(1).describe("Tab ID from create_tab"),
-      offset: z.number().optional().describe("Offset for paginating large snapshots. Use nextOffset from previous response.")
+      offset: z.number().optional().describe("Offset for paginating large snapshots. Use nextOffset from previous response."),
+      focus_selector: z.string().optional().describe("CSS selector to scope the snapshot to a subtree (e.g. '[role=dialog]'). When set, ignores offset/pagination."),
+      max_lines: z.number().int().min(10).max(5000).optional().describe("Hard cap on YAML lines after filtering. Useful with roles_filter or focus_selector."),
+      roles_filter: z.array(z.string()).optional().describe("Restrict YAML to nodes whose role matches any of these (e.g. ['button','checkbox','dialog']). Ancestor lines are preserved for context."),
+      current_task: z.string().max(200).optional().describe("Short task descriptor injected as a YAML banner (helps the LLM stay focused)."),
+      last_action: z.string().max(200).optional().describe("Last action narrative injected as a YAML banner (drift detection / context).")
     },
     async (input: unknown) => {
       try {
         const parsed = z.object({
-          tabId: z.string().min(1).describe("Tab ID from create_tab"),
-          offset: z.number().optional().describe("Offset for paginating large snapshots. Use nextOffset from previous response.")
+          tabId: z.string().min(1),
+          offset: z.number().optional(),
+          focus_selector: z.string().optional(),
+          max_lines: z.number().int().min(10).max(5000).optional(),
+          roles_filter: z.array(z.string()).optional(),
+          current_task: z.string().max(200).optional(),
+          last_action: z.string().max(200).optional()
         }).parse(input);
         const tracked = getTrackedTab(parsed.tabId);
-        const response = await deps.client.snapshot(parsed.tabId, tracked.userId, parsed.offset);
+        const scoped = (parsed.focus_selector || parsed.max_lines || parsed.roles_filter || parsed.current_task || parsed.last_action)
+          ? {
+              focusSelector: parsed.focus_selector,
+              maxLines: parsed.max_lines,
+              rolesFilter: parsed.roles_filter,
+              currentTask: parsed.current_task,
+              lastAction: parsed.last_action
+            }
+          : (tracked.currentTask || tracked.lastAction)
+            ? {
+                currentTask: tracked.currentTask,
+                lastAction: tracked.lastAction
+              }
+            : undefined;
+        const response = await deps.client.snapshot(parsed.tabId, tracked.userId, parsed.offset, scoped);
         incrementToolCall(parsed.tabId);
         updateTabUrl(parsed.tabId, response.url);
         updateRefsCount(parsed.tabId, response.refsCount);
@@ -150,11 +174,18 @@ export function registerObservationTools(server: McpServer, deps: ToolDeps): voi
           hasMore?: boolean;
           nextOffset?: number | null;
           truncationInfo?: string;
+          scoped?: boolean;
+          newElementsCount?: number;
         } = {
           url: response.url,
           snapshot: response.snapshot,
           refsCount: response.refsCount
         };
+
+        if (response.scoped) result.scoped = true;
+        if (response.newElementsCount && response.newElementsCount > 0) {
+          result.newElementsCount = response.newElementsCount;
+        }
 
         if (response.truncated) {
           result.truncated = response.truncated;
@@ -167,6 +198,33 @@ export function registerObservationTools(server: McpServer, deps: ToolDeps): voi
         }
 
         return okResult(result);
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "snapshot_dialog",
+    "Capture only the topmost open dialog/alertdialog (Radix-aware via [data-state=open]). Returns null snapshot when no dialog is visible. Use after a click that opens a modal to get a focused, low-token view of just the dialog content.",
+    {
+      tabId: z.string().min(1).describe("Tab ID from create_tab")
+    },
+    async (input: unknown) => {
+      try {
+        const parsed = z.object({ tabId: z.string().min(1) }).parse(input);
+        const tracked = getTrackedTab(parsed.tabId);
+        const response = await deps.client.snapshotDialog(parsed.tabId, tracked.userId);
+        incrementToolCall(parsed.tabId);
+        updateTabUrl(parsed.tabId, response.url);
+        if (response.refsCount > 0) updateRefsCount(parsed.tabId, response.refsCount);
+        return okResult({
+          url: response.url,
+          snapshot: response.snapshot,
+          refsCount: response.refsCount,
+          selector: response.selector,
+          dialogVisible: response.snapshot !== null
+        });
       } catch (error) {
         return toErrorResult(error);
       }
@@ -244,17 +302,45 @@ export function registerObservationTools(server: McpServer, deps: ToolDeps): voi
 
   server.tool(
     "screenshot",
-    "Take visual screenshot in base64 PNG. Use ONLY for visual verification (CSS, layout, proof). Prefer snapshot for most tasks — much more token-efficient.",
+    "Take visual screenshot. Use ONLY for visual verification (CSS, layout, proof). Prefer snapshot for most tasks — much more token-efficient.\n\nVision-cost controls (optional): pass type='jpeg' + quality (1-100) to shrink payload (low detail), or clip {x,y,width,height} to capture only a region. clip is the recommended way to keep vision tokens low when verifying a single component.",
     {
-      tabId: z.string().min(1).describe("Tab ID from create_tab")
+      tabId: z.string().min(1).describe("Tab ID from create_tab"),
+      fullPage: z.boolean().optional().describe("Capture entire scrollable page. Default false (viewport only)."),
+      type: z.enum(["png", "jpeg"]).optional().describe("Image format. JPEG enables `quality` and reduces size. Default png."),
+      quality: z.number().int().min(1).max(100).optional().describe("JPEG quality (1-100). Lower = smaller payload = lower vision detail. Ignored when type=png."),
+      clip: z.object({
+        x: z.number().min(0),
+        y: z.number().min(0),
+        width: z.number().positive(),
+        height: z.number().positive()
+      }).optional().describe("Clip region in CSS pixels. Strongly preferred for vision-cost reduction.")
     },
     async (input: unknown) => {
       try {
-        const parsed = z.object({ tabId: z.string().min(1).describe("Tab ID from create_tab") }).parse(input);
+        const parsed = z.object({
+          tabId: z.string().min(1),
+          fullPage: z.boolean().optional(),
+          type: z.enum(["png", "jpeg"]).optional(),
+          quality: z.number().int().min(1).max(100).optional(),
+          clip: z.object({
+            x: z.number().min(0),
+            y: z.number().min(0),
+            width: z.number().positive(),
+            height: z.number().positive()
+          }).optional()
+        }).parse(input);
         const tracked = getTrackedTab(parsed.tabId);
-        const screenshotBuffer = await deps.client.screenshot(parsed.tabId, tracked.userId);
+        const { buffer, mime } = await deps.client.screenshot(parsed.tabId, tracked.userId, {
+          fullPage: parsed.fullPage,
+          type: parsed.type,
+          quality: parsed.quality,
+          clip: parsed.clip
+        });
         incrementToolCall(parsed.tabId);
-        return imageResult(screenshotBuffer.toString("base64"));
+        if (mime === "image/jpeg") {
+          return binaryResult(buffer.toString("base64"), mime);
+        }
+        return imageResult(buffer.toString("base64"));
       } catch (error) {
         return toErrorResult(error);
       }

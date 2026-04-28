@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { okResult, toErrorResult } from "../errors.js";
-import { getTrackedTab, incrementToolCall, updateRefsCount, updateTabUrl } from "../state.js";
+import { getTrackedTab, incrementToolCall, recordTabAction, updateRefsCount, updateTabUrl } from "../state.js";
 import type { ToolDeps } from "../server.js";
 
 export function registerNavigationTools(server: McpServer, deps: ToolDeps): void {
@@ -20,6 +20,7 @@ export function registerNavigationTools(server: McpServer, deps: ToolDeps): void
         const result = await deps.client.navigate(parsed.tabId, parsed.url, tracked.userId);
         incrementToolCall(parsed.tabId);
         updateTabUrl(parsed.tabId, result.url);
+        recordTabAction(parsed.tabId, `navigate ${result.url}`);
         return okResult({ url: result.url, title: result.title ?? "", refsAvailable: result.refsAvailable });
       } catch (error) {
         return toErrorResult(error);

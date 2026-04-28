@@ -1,7 +1,22 @@
+import { dirname, join } from "node:path";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import type { ToolDeps } from "./server.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PROMPTS_DIR = join(__dirname, "prompts");
+
+function loadPromptFile(name: string): string {
+  try {
+    return readFileSync(join(PROMPTS_DIR, name), "utf-8");
+  } catch {
+    return `# ${name}\n\nPrompt file missing — please reinstall camofox-mcp.`;
+  }
+}
 
 export function registerPrompts(server: McpServer, deps: ToolDeps): void {
   server.registerPrompt(
@@ -96,6 +111,54 @@ Tips:
 - Use \`import_cookies\` to restore login sessions
 - Each tab gets a unique anti-detection fingerprint automatically`
           }
+        }
+      ]
+    })
+  );
+
+  server.registerPrompt(
+    "agent-system-lean",
+    {
+      description:
+        "System prompt for an LLM agent driving camofox-mcp in lean profile (semantic tools only). Use this as the system message of your agent loop."
+    },
+    () => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: { type: "text" as const, text: loadPromptFile("lean-agent.md") }
+        }
+      ]
+    })
+  );
+
+  server.registerPrompt(
+    "agent-system-full",
+    {
+      description:
+        "System prompt for an LLM agent driving camofox-mcp in full profile (semantic + legacy tools). Use this as the system message of your agent loop."
+    },
+    () => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: { type: "text" as const, text: loadPromptFile("full-agent.md") }
+        }
+      ]
+    })
+  );
+
+  server.registerPrompt(
+    "agent-system-recovery",
+    {
+      description:
+        "Drift / failure recovery protocol. Append to the agent system message when running long flows on protected sites (LeBonCoin, Amazon, LinkedIn) — covers Radix toggle quirks, dialog handling, bounded retries and honest reporting."
+    },
+    () => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: { type: "text" as const, text: loadPromptFile("recovery-system.md") }
         }
       ]
     })

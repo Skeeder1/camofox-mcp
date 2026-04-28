@@ -2,11 +2,11 @@
 
 This page is the canonical index for the tools currently registered by `camofox-mcp`.
 
-> Note: older docs in this repo still mention 41 or 46 tools. The current source registers **46 tools across 12 categories**. This index follows the live source in `src/tools/` and `src/server.ts`.
+> Note: older docs in this repo still mention 41 or 46 tools. The current source registers **47 tools across 12 categories**. This index follows the live source in `src/tools/` and `src/server.ts`.
 
 ## Overview
 
-- Total tools: **46**
+- Total tools: **47**
 - Categories: **12**
 - Primary interaction model: `create_tab` -> `navigate` or `web_search` -> `snapshot` -> interact with refs or CSS selectors
 - Preferred read path: use `snapshot` first, then fall back to CSS-selector and DOM tools when refs are incomplete
@@ -40,6 +40,7 @@ This page is the canonical index for the tools currently registered by `camofox-
 | `youtube_transcript` | Observation | Fetch a YouTube transcript without opening a tab. |
 | `camofox_wait_for_text` | Observation | Wait until specific text appears. |
 | `camofox_wait_for_selector` | Observation | Wait until a CSS selector appears in the live DOM. |
+| `smart_snapshot` | Observation | Get LLM-summarized page state as compact JSON optimized for navigation decisions. Preferred over `snapshot` for agents. Requires `CAMOFOX_SUMMARIZER_API_KEY`. |
 | `web_search` | Search & Discovery | Run a search through one of 14 built-in engines. |
 | `import_cookies` | Session Management | Import cookies into a user session or tab. |
 | `get_stats` | Session Management | Return local tab stats plus browser-server session stats. |
@@ -111,6 +112,7 @@ This page is the canonical index for the tools currently registered by `camofox-
 | `youtube_transcript` | Fetch a transcript for a YouTube video without managing a tab. | `url: string`; `languages?: string[]` default browser-server behavior, commonly `['en']`. | Provider payload including `status`, `video_id`, `video_title?`, `transcript?`, `language?`, `total_words?`, `available_languages?`, `message?`, `code?`. | No | `youtube_transcript({ url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", languages: ["en"] })` |
 | `camofox_wait_for_text` | Wait until a specific text string appears on the page. | `tabId: string`; `text: string`; `timeout?: number` default `10000`. | `message`. | No | `camofox_wait_for_text({ tabId: "tab_123", text: "Results" })` |
 | `camofox_wait_for_selector` | Wait until a CSS selector appears in the live DOM. | `tabId: string`; `selector: string`; `timeout?: int` default `10000`. | `success`, `message`. | Yes | `camofox_wait_for_selector({ tabId: "tab_123", selector: ".search-results" })` |
+| `smart_snapshot` | Get LLM-summarized page state as compact JSON. Returns structured data: page type, task-relevant elements with refs, forms, items, pagination, alerts. Preferred over raw `snapshot` for navigation agents. Falls back to error object if summarizer is unavailable. | `tabId: string`; `current_task?: string`; `last_action?: string`. | Structured JSON with `url`, `page_type`, `summary`, `action_outcome`, `change_detected`, `alerts`, `task_relevant_elements`, `key_data`, `items`, `forms`, `pagination`, `other_available_actions`. On failure: `error`, `raw_snapshot_available`, `alerts`. | No (but requires `CAMOFOX_SUMMARIZER_API_KEY` env var) | `smart_snapshot({ tabId: "tab_123", current_task: "Find cheapest listing under 10000€", last_action: "clicked search button" })` |
 
 ## Search & Discovery
 
@@ -168,6 +170,21 @@ This page is the canonical index for the tools currently registered by `camofox-
 | Name | Description | Parameters | Returns | Requires API Key | Example |
 | --- | --- | --- | --- | --- | --- |
 | `list_presets` | List available geo presets from the browser server. | None. | `count`, `presets[]`, where each preset includes `name`, `locale`, `timezoneId`, and optional `geolocation`. | No | `list_presets({})` |
+
+## Summarizer Configuration
+
+The `smart_snapshot` tool uses an external LLM to summarize raw accessibility snapshots into structured JSON. Configure via environment variables:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `CAMOFOX_SMART_SNAPSHOT_ENABLED` | `true` | Enable or disable the smart snapshot tool. Set to `false` to disable. |
+| `CAMOFOX_SUMMARIZER_API_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` | OpenAI-compatible API endpoint for the summarizer LLM. |
+| `CAMOFOX_SUMMARIZER_API_KEY` | — | API key for the summarizer LLM. Required when smart snapshot is enabled. |
+| `CAMOFOX_SUMMARIZER_MODEL` | `gemini-2.5-flash-lite-preview-06-17` | Model identifier to use for summarization. |
+| `CAMOFOX_SUMMARIZER_MAX_TOKENS` | `1500` | Maximum tokens for the summary output. |
+| `CAMOFOX_SUMMARIZER_TEMPERATURE` | `0` | Temperature for the summarizer (0 = deterministic JSON output). |
+| `CAMOFOX_SUMMARIZER_TIMEOUT` | `30000` | Timeout in milliseconds for the summarizer API call. |
+| `CAMOFOX_SUMMARIZER_JSON_FORMAT` | `true` | Send `response_format: { type: "json_object" }` to the API. Disable for models that don't support it. |
 
 ## Practical Patterns
 
