@@ -320,6 +320,10 @@ export class CamofoxClient {
     await this.requestNoContent("/stop", { method: "POST" });
   }
 
+  warmup(): Promise<void> {
+    return this.ensureRunning();
+  }
+
   private ensureRunning(): Promise<void> {
     if (!this.startupPromise) {
       this.startupPromise = this.doStart().finally(() => {
@@ -1102,7 +1106,7 @@ export class CamofoxClient {
     } catch (error) {
       if (error instanceof AppError) {
         // On first connection failure, try to start the server and retry once
-        if (error.code === "CONNECTION_REFUSED" && !isRetry) {
+        if (error.code === "CONNECTION_REFUSED" && !isRetry && this.browserServerPath) {
           await this.ensureRunning();
           return this.request(path, init, true);
         }
@@ -1115,7 +1119,7 @@ export class CamofoxClient {
 
       if (error instanceof Error) {
         const appErr = new AppError("CONNECTION_REFUSED", `Failed to connect to CamoFox API: ${error.message}`);
-        if (!isRetry) {
+        if (!isRetry && this.browserServerPath) {
           await this.ensureRunning();
           return this.request(path, init, true);
         }

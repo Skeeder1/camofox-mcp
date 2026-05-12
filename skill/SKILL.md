@@ -95,6 +95,67 @@ Use this skill when the user asks for tasks like:
 - “Run web search in browser and summarize results”
 - “Download files and return metadata/content”
 
+## Critical rules — read before automating
+
+### Refs are volatile — re-snapshot after every DOM mutation
+
+Element refs (`e1`, `e2`, ...) are recalculated from the accessibility tree on every snapshot. **Any interaction that mutates the DOM — a click, a type, a dropdown opening, a stepper increment — invalidates all previously known refs.**
+
+Rules to follow without exception:
+
+1. **Always call `snapshot` before using a ref.** Never reuse a ref from a previous snapshot.
+2. **After any click that opens/closes a dropdown, modal, or panel → re-snapshot before the next click.**
+3. **After any `type_text` that triggers autocomplete or live-filtering → re-snapshot before clicking a suggestion.**
+4. If a click lands on the wrong element (e.g. navigates to a page instead of submitting a form), it means refs shifted between snapshot and click. Use `go_back` and re-snapshot.
+
+```
+# WRONG — ref from old snapshot, DOM may have changed
+camofox_click ref=e65  # danger: e65 may now point to something else
+
+# CORRECT — always snapshot first
+camofox_snapshot       # get fresh refs
+camofox_click ref=<ref from THIS snapshot>
+```
+
+### Numeric steppers and sliders — use JS, not repeated clicks
+
+UI controls like steppers (`+`/`-` buttons that increment a value) and range sliders mutate the DOM on each interaction, making ref-based repeated clicks unreliable. **Use `camofox_evaluate_js` to set the value directly** instead of clicking the `+` button N times.
+
+Pattern for a stepper with a CSS-identifiable container:
+
+```js
+// Example: click the "+" button inside .number-filter__input 5 times
+(async function() {
+  const getBtn = () => {
+    const container = document.querySelector('.number-filter__input');
+    if (!container) return null;
+    const btns = container.parentElement.querySelectorAll('button');
+    return btns[btns.length - 1]; // last button = "+"
+  };
+  for (let i = 0; i < 5; i++) {
+    await new Promise(r => setTimeout(r, 300));
+    const btn = getBtn();
+    if (btn && !btn.disabled) btn.click();
+  }
+  const valEl = document.querySelector('.number-filter__input span');
+  return 'value: ' + (valEl ? valEl.textContent : '?');
+})()
+```
+
+Pattern to read the current value before acting:
+
+```js
+// Find a stepper's current value
+(function() {
+  const el = document.querySelector('[class*="number-filter"] span');
+  return el ? el.textContent : 'not found';
+})()
+```
+
+> **Note:** `camofox_evaluate_js` runs in an isolated scope invisible to page scripts — it is safe to use on anti-bot protected sites.
+
+---
+
 ## Tool catalog (41 tools)
 
 ### Health (1)
@@ -120,14 +181,14 @@ Use this skill when the user asks for tasks like:
 - `type_text` — Type text into an input field. Provide either a ref (from snapshot) or a CSS selector. Use ref when available; otherwise use selector when snapshot doesn't assign refs (common with combobox/autocomplete inputs). Call snapshot first to find target element.
 - `scroll` — Scroll page up or down by pixel amount. Use to reveal content below the fold or navigate long pages.
 - `camofox_scroll_element` — Scroll a specific container element (modal dialog, scrollable div, sidebar). Use when page-level scroll doesn't reach content inside modals or overflow containers. Returns scroll position metadata to track progress.
-- `camofox_evaluate_js` — Execute JavaScript in the browser page context. Runs in isolated scope (invisible to page scripts — safe for anti-detection). Use for: extracting data not visible in accessibility snapshot, checking element properties, reading computed styles, manipulating DOM elements. Requires CAMOFOX_API_KEY to be configured.
+- `camofox_evaluate_js` — Execute JavaScript in the browser page context. Runs in isolated scope (invisible to page scripts — safe for anti-detection). Use for: extracting data not visible in accessibility snapshot, checking element properties, reading computed styles, manipulating DOM elements. **Essential for numeric steppers and sliders** where repeated ref-based clicks are unreliable due to DOM re-renders. Wrap code in an IIFE: `(function() { ... })()` or `(async function() { ... })()`. Requires CAMOFOX_API_KEY to be configured.
 - `camofox_hover` — Hover over an element to trigger tooltips, dropdown menus, or hover states. Use ref from snapshot or CSS selector.
 - `camofox_wait_for` — Wait for page to be fully ready (DOM loaded, network idle, framework hydration complete). Use after navigation or actions that trigger page changes.
 - `camofox_press_key` — Press a keyboard key. Use after type_text to submit forms (Enter), navigate between elements (Tab), move through suggestions (ArrowDown/ArrowUp), or dismiss dialogs (Escape). Common keys: Enter, Tab, Escape, ArrowDown, ArrowUp, Backspace, Space.
 
 ### Observation (4)
 
-- `snapshot` — Get accessibility tree snapshot — the PRIMARY way to read page content. Returns element refs, roles, names and values. Token-efficient. Always prefer over screenshot. Element refs are used with click and type_text.
+- `snapshot` — Get accessibility tree snapshot — the PRIMARY way to read page content. Returns element refs, roles, names and values. Token-efficient. Always prefer over screenshot. Element refs are used with click and type_text. **Refs are only valid until the next DOM mutation — always re-snapshot before clicking after any interaction.**
 - `screenshot` — Take visual screenshot in base64 PNG. Use ONLY for visual verification (CSS, layout, proof). Prefer snapshot for most tasks — much more token-efficient.
 - `get_links` — Get all hyperlinks on page with URLs and text. Useful for navigation discovery and site mapping.
 - `camofox_wait_for_text` — Wait for specific text to appear on the page. Useful for waiting for search results, form submissions, or dynamic content loading.

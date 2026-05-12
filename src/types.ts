@@ -170,8 +170,6 @@ export interface TabInfo {
   currentTask?: string;
   /** Rolling history of tasks/actions (capped, FIFO). Most recent first. */
   taskHistory?: TaskHistoryEntry[];
-  /** Hash of the last full snapshot — used to skip redundant snapshot calls. */
-  lastSnapshotHash?: string;
   /** Last completed action narrative (e.g. "click ref=e12 (force)"). */
   lastAction?: string;
 }

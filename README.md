@@ -1,26 +1,19 @@
 # CamoFox MCP
 
-AI-powered anti-detection browser automation for MCP-compatible AI agents.
+CamoFox MCP is an anti-detection browser automation server for MCP-compatible AI agents. It connects clients such as Claude Desktop, VS Code, Cursor, and OpenClaw to a running `camofox-browser` server.
 
-CamoFox MCP connects MCP clients such as Claude Desktop, VS Code, Cursor, and OpenClaw to the CamoFox browser server. It gives agents a practical browser toolset for navigation, interaction, search, extraction, downloads, and session reuse while relying on Camoufox-based anti-detection behavior underneath.
+The project is an MCP adapter. Browser execution, Camoufox fingerprinting, downloads, and live DOM operations are handled by `camofox-browser`; this package validates MCP tool calls, tracks tab state, manages profiles, and forwards browser operations over HTTP.
 
-## Key Features
+## Capabilities
 
-- 47 browser automation tools across navigation, interaction, observation, search, downloads, sessions, and batch workflows.
-- Anti-detection browser automation built on top of the CamoFox browser server and Camoufox.
-- Multi-tab workflows with tracked state, history, and cleanup.
-- Session persistence with cookie import, saved profiles, and optional auto-save.
-- Token-efficient accessibility snapshots with CSS-selector fallbacks for difficult SPA flows.
-- OpenClaw-compatible HTTP transport, plus standard stdio support for desktop MCP clients.
+- Stdio and streamable HTTP MCP transports.
+- Anti-detection browser tabs backed by CamoFox Browser and Camoufox.
+- Tool layers for lean agent surfaces or full backward-compatible tool access.
+- Navigation, interaction, observation, screenshots, downloads, profiles, search, semantic actions, and structured extraction.
+- Snapshot-first workflows using accessibility refs, with CSS selector fallbacks for modern SPAs.
+- Session persistence through cookie profiles and optional auto-save.
 
 ## Quick Install
-
-You need both components running:
-
-1. `camofox-browser` handles the anti-detection browser.
-2. `camofox-mcp` exposes that browser to your MCP client.
-
-### Option A: `npx` + stdio
 
 Start the browser server:
 
@@ -28,13 +21,12 @@ Start the browser server:
 npx camofox-browser@latest
 ```
 
-Add CamoFox MCP to your MCP client:
+Add CamoFox MCP to a stdio MCP client:
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "camofox": {
-      "type": "stdio",
       "command": "npx",
       "args": ["-y", "camofox-mcp@latest"],
       "env": {
@@ -45,67 +37,65 @@ Add CamoFox MCP to your MCP client:
 }
 ```
 
-### Option B: Docker
-
-Start the browser server:
+For HTTP-capable clients:
 
 ```bash
-docker run -d -p 9377:9377 --name camofox-browser ghcr.io/redf0x1/camofox-browser:latest
+CAMOFOX_TRANSPORT=http npx -y camofox-mcp@latest
 ```
 
-Run CamoFox MCP in HTTP mode for remote MCP clients such as OpenClaw:
+The HTTP endpoint is `http://localhost:3000/mcp` by default.
 
-```bash
-docker run -p 3000:3000 --rm \
-  -e CAMOFOX_TRANSPORT=http \
-  -e CAMOFOX_URL=http://host.docker.internal:9377 \
-  ghcr.io/redf0x1/camofox-mcp:latest node dist/http.js
-```
+## Verify
 
-Full client configuration examples live in [docs/getting-started.md](docs/getting-started.md).
-
-## Quick Verify
-
-Verify the browser server is reachable:
+Check the browser server:
 
 ```bash
 curl -fsS http://localhost:9377/health
 ```
 
-Expected response includes `"ok":true` and `"browserConnected":true`.
+Then ask your MCP client to run:
 
-## Tool Categories
-
-| Category | Tool count | Docs |
-|---|---:|---|
-| Health | 1 | [Health](docs/tool-reference/health.md) |
-| Tabs | 3 | [Tabs](docs/tool-reference/tabs.md) |
-| Navigation | 4 | [Navigation](docs/tool-reference/navigation.md) |
-| Interaction | 8 | [Interaction](docs/tool-reference/interaction.md) |
-| Observation | 9 | [Observation](docs/tool-reference/observation.md) |
-| Search | 1 | [Search](docs/tool-reference/search.md) |
-| Session | 4 | [Session](docs/tool-reference/session.md) |
-| Profiles | 4 | [Profiles](docs/tool-reference/profiles.md) |
-| Downloads | 3 | [Downloads](docs/tool-reference/downloads.md) |
-| Extraction | 3 | [Extraction](docs/tool-reference/extraction.md) |
-| Batch workflows | 6 | [Batch](docs/tool-reference/batch.md) |
-| Presets | 1 | [Presets](docs/tool-reference/presets.md) |
-
-## Top Limitations
-
-- CamoFox MCP is not a standalone browser. You must run a compatible `camofox-browser` server separately.
-- Accessibility-tree refs are the primary interaction model, but SPA and custom-component sites can require CSS selectors or rendered HTML tools.
-- If the browser server enforces authentication, API-key-gated operations need the same `CAMOFOX_API_KEY` on both sides.
-- HTTP transport is mainly for remote MCP clients. Desktop MCP clients usually work best with stdio configuration.
-
-## Security
-
-Treat this as a browser control surface. In shared or networked environments, isolate the browser server, avoid exposing MCP endpoints broadly, and use `CAMOFOX_API_KEY` when authentication is enabled. Session profiles can contain sensitive cookies and should be stored accordingly.
+```text
+Call server_status, create a tab for https://example.com, take a snapshot, then close the tab.
+```
 
 ## Documentation
 
-Start at [docs/README.md](docs/README.md) for the documentation hub, then use [docs/getting-started.md](docs/getting-started.md) for setup, verification, and first workflow examples.
+- [Documentation hub](docs/README.md)
+- [Quickstart](docs/quickstart.md)
+- [Guide](docs/guide.md)
+- [MCP server](docs/mcp-server.md)
+- [Agents](docs/agents.md)
+- [Architecture](docs/architecture/index.md)
+- [Operations](docs/operations.md)
 
-## Contributing + License
+Agents should start with [docs/llms.txt](docs/llms.txt), then read [Agents](docs/agents.md) and [MCP server](docs/mcp-server.md).
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and [LICENSE](LICENSE) for the MIT license.
+## Development
+
+```bash
+npm install
+npm run build
+npm test
+```
+
+Run locally with stdio:
+
+```bash
+npm run dev
+```
+
+Run locally with HTTP transport:
+
+```bash
+npm run build
+CAMOFOX_TRANSPORT=http node dist/http.js
+```
+
+## Security
+
+CamoFox MCP is a browser control surface. Keep HTTP transport on `127.0.0.1` unless the deployment environment provides access controls. Treat cookies, saved profiles, downloads, browser-server API keys, and LLM provider keys as sensitive data.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
