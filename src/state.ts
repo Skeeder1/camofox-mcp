@@ -115,23 +115,12 @@ export function recordTabAction(tabId: string, action: string): void {
   tab.taskHistory = pushTaskHistory(tab.taskHistory, { ts: Date.now(), kind: "action", text: trimmed });
 }
 
-export function setLastSnapshotHash(tabId: string, hash: string): void {
-  let tab: TabInfo | undefined;
-  try {
-    tab = getTrackedTab(tabId);
-  } catch {
-    return;
-  }
-  tab.lastSnapshotHash = hash;
-}
-
 export function getTabTaskContext(tabId: string): {
   tabId: string;
   url: string;
   currentTask?: string;
   lastAction?: string;
   taskHistory: TabInfo["taskHistory"];
-  lastSnapshotHash?: string;
 } {
   const tab = getTrackedTab(tabId);
   return {
@@ -140,7 +129,6 @@ export function getTabTaskContext(tabId: string): {
     currentTask: tab.currentTask,
     lastAction: tab.lastAction,
     taskHistory: tab.taskHistory ?? [],
-    lastSnapshotHash: tab.lastSnapshotHash
   };
 }
 

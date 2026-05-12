@@ -121,6 +121,14 @@ export async function startHttpServer(config: Config = loadConfig()): Promise<vo
 
     httpServer.on("error", reject);
   });
+
+  // Start browser eagerly so it's ready when the first tool is called
+  if (config.browserServerPath) {
+    const warmup = new CamofoxClient(config);
+    warmup.warmup().catch((err: Error) => {
+      console.error("[camofox-mcp] background browser warmup failed (will retry on first tool call):", err.message);
+    });
+  }
 }
 
 if (isDirectExecution()) {

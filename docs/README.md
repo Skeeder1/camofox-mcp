@@ -1,61 +1,55 @@
 # CamoFox MCP Documentation
 
-This documentation set is organized to get a new MCP client working quickly, then move into workflow guidance and reference material. The root [../README.md](../README.md) stays intentionally short; this directory is the canonical place for setup and deeper usage docs.
+CamoFox MCP exposes CamoFox Browser to MCP clients. The docs are intentionally compact: workflow pages first, architecture details in one folder, and a small agent entry file for LLMs.
 
-## Getting Started
+## Reading Tree
 
-- [Getting Started](getting-started.md) for prerequisites, installation methods, client configuration, verification, and first browser actions.
+```mermaid
+flowchart TD
+    A[Documentation Hub] --> B[Quickstart]
+    A --> C[Guide]
+    A --> D[MCP Server]
+    A --> E[Agents]
+    A --> F[Architecture]
+    A --> G[Operations]
 
-## Guides
+    B --> C
+    C --> D
+    D --> E
+    E --> F
+    G --> F
 
-- [Refs vs Selectors](guides/refs-vs-selectors.md) for choosing between accessibility refs and CSS selectors.
-- SPA and Dynamic Sites *(coming soon)* for hydration waits, async content, and selector-based fallbacks.
-- Session Profiles *(coming soon)* for login reuse, cookie import, and auto-save behavior.
-- Search and Discovery *(coming soon)* for `web_search`, snapshots, and extraction flows.
-- Downloads and Resources *(coming soon)* for download tracking, resource extraction, and blob resolution.
-- Geo Presets *(coming soon)* for preset-driven locale, timezone, and geolocation setup.
-- Snapshot Pagination *(coming soon)* for large-page reading with `offset`.
-- [OpenClaw Integration](openclaw.md) for HTTP transport setup with OpenClaw.
+    F --> F1[Runtime]
+    F --> F2[Tools]
+    F --> F3[Browser Client]
+    F --> F4[LLM Layer]
+```
 
-## Tool Reference
+## Start Here
 
-- [Tool Reference Overview](tool-reference/README.md) for the full surface area and conventions.
-- Health *(coming soon)*
-- Tabs *(coming soon)*
-- Navigation *(coming soon)*
-- Interaction *(coming soon)*
-- Observation *(coming soon)*
-- Search *(coming soon)*
-- Session *(coming soon)*
-- Profiles *(coming soon)*
-- Downloads *(coming soon)*
-- Extraction *(coming soon)*
-- Batch *(coming soon)*
-- Presets *(coming soon)*
+| Goal | Read |
+| --- | --- |
+| Install CamoFox MCP and verify a client | [Quickstart](quickstart.md) |
+| Use tabs, snapshots, refs, selectors, downloads, and profiles | [Guide](guide.md) |
+| Understand transports, tool layers, lifecycle, and security | [MCP Server](mcp-server.md) |
+| Give an AI agent the right workflows and cleanup rules | [Agents](agents.md) |
+| Understand internals and extension points | [Architecture](architecture/index.md) |
+| Build, test, configure, deploy, or troubleshoot | [Operations](operations.md) |
 
-## Recipes
+## Core Model
 
-- Login and Reuse a Session *(coming soon)*
-- Search Then Extract *(coming soon)*
-- Fill and Submit a Form *(coming soon)*
-- Collect Downloads from a Page *(coming soon)*
-- Paginate Large Snapshots *(coming soon)*
+```text
+MCP client
+  -> camofox-mcp
+  -> camofox-browser
+  -> Camoufox-backed browser
+```
 
-## Reference
+`camofox-mcp` does not automate the browser directly. It registers MCP tools, validates arguments with Zod, tracks tab state, manages profile files, routes optional LLM workflows, and forwards requests to `camofox-browser`.
 
-- [Website Patterns](reference/website-patterns.md)
-- Errors *(coming soon)*
-- Troubleshooting *(coming soon)*
-- Configuration *(coming soon)*
-- Prompts *(coming soon)*
-- Security *(coming soon)*
-- Architecture *(coming soon)*
+## Related Topics
 
-## Architecture
-
-CamoFox MCP is a TypeScript MCP server that translates MCP tool calls into HTTP requests against `camofox-browser`. The browser server manages Camoufox-backed browser contexts, anti-detection behavior, downloads, and live DOM operations. In practice, the flow is:
-
-1. Your MCP client calls a CamoFox MCP tool.
-2. CamoFox MCP validates arguments, manages tracked state, and forwards the request.
-3. `camofox-browser` executes the browser operation and returns a structured result.
-4. CamoFox MCP converts that result into MCP tool output for the agent.
+- [Quickstart](quickstart.md)
+- [MCP Server](mcp-server.md)
+- [Agents](agents.md)
+- [Architecture](architecture/index.md)

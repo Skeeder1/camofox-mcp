@@ -1,0 +1,35 @@
+# CamoFox MCP documentation for AI agents
+
+Primary entry points:
+
+- Hub: docs/README.md
+- Quickstart: docs/quickstart.md
+- Guide: docs/guide.md
+- MCP server: docs/mcp-server.md
+- Agents: docs/agents.md
+- Operations: docs/operations.md
+- Architecture: docs/architecture/index.md
+
+Decision order:
+
+1. Call `server_status` before debugging any browser workflow.
+2. Use `create_tab` before navigation or interaction.
+3. Use `snapshot` or `smart_snapshot` to read the page and collect refs.
+4. Use refs for `click` and `type_text`; use CSS selectors only when refs are missing or stale.
+5. Use `observe`, `act`, `extract`, and `execute` when semantic tools are enabled and an LLM key is configured.
+6. Use waits for dynamic pages before extracting or interacting.
+7. Use downloads and profiles only when the task requires them.
+
+Cleanup:
+
+- Close tabs created by `create_tab`.
+- Use `camofox_close_session` for whole-session cleanup.
+- Save profiles only when session persistence is intended.
+- Treat cookies, profiles, downloads, browser API keys, and LLM API keys as sensitive.
+
+Architecture map:
+
+- Runtime and transports: docs/architecture/runtime.md
+- Tool layers and tool groups: docs/architecture/tools.md
+- Browser REST client, profiles, downloads: docs/architecture/browser-client.md
+- Semantic tools, prompts, JSON repair: docs/architecture/llm.md
