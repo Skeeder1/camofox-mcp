@@ -30,7 +30,7 @@ CAMOFOX_TRANSPORT=http npx camofox-mcp
 # Browser-server API key authentication
 CAMOFOX_TRANSPORT=http CAMOFOX_API_KEY=browser-server-key npx camofox-mcp
 
-# Trusted private browser network with camofox-browser 2.4.5 disabled auth:
+# Trusted private browser network with camofox-browser disabled auth:
 # start the browser with CAMOFOX_AUTH_MODE=disabled and leave CAMOFOX_API_KEY unset here.
 CAMOFOX_TRANSPORT=http npx camofox-mcp
 

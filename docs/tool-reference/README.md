@@ -11,7 +11,7 @@ This page is the canonical index for the tools currently registered by `camofox-
 - Primary interaction model: `create_tab` -> `navigate` or `web_search` -> `snapshot` -> interact with refs or CSS selectors
 - Preferred read path: use `snapshot` first, then fall back to CSS-selector and DOM tools when refs are incomplete
 - API key note: tools marked `Yes` call browser-server endpoints that require outbound `CAMOFOX_API_KEY` when the browser server is protected. HTTP transport exposure uses separate inbound `CAMOFOX_HTTP_API_KEY` Bearer authentication.
-- Compatibility note: use `camofox-browser` `2.4.5` or newer. Browser `2.4.3` added session proxy launch support, browser `2.4.4` fixes first-tab reuse for persistent contexts, and browser `2.4.5` adds `CAMOFOX_AUTH_MODE=disabled` for trusted private networks. Leave `CAMOFOX_API_KEY` unset in MCP when using that disabled browser auth mode.
+- Compatibility note: use `camofox-browser` `2.4.6` or newer. Browser `2.4.6` pins the Camoufox-compatible Playwright protocol dependency for fresh installs, browser `2.4.5` adds `CAMOFOX_AUTH_MODE=disabled` for trusted private networks, browser `2.4.4` fixes first-tab reuse for persistent contexts, and browser `2.4.3` added session proxy launch support. Leave `CAMOFOX_API_KEY` unset in MCP when using that disabled browser auth mode.
 
 ## Quick Reference
 

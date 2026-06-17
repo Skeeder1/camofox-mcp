@@ -6,9 +6,9 @@ Use this guide to install CamoFox MCP, connect it to `camofox-browser`, verify t
 
 - Node.js 18 or newer for `npx` and local development.
 - Docker if you prefer container-based setup.
-- A running `camofox-browser` server. Use `camofox-browser` `2.4.5` or newer for explicit browser auth modes; browser `2.4.4` or newer also fixes first-tab reuse for persistent contexts.
+- A running `camofox-browser` server. Use `camofox-browser` `2.4.6` or newer so fresh installs pin the Camoufox-compatible Playwright protocol dependency; browser `2.4.5` introduced explicit browser auth modes, and browser `2.4.4` fixed first-tab reuse for persistent contexts.
 - An MCP-compatible client such as Claude Desktop, VS Code, Cursor, or OpenClaw.
-- `CAMOFOX_API_KEY` only if your browser server is configured to require authentication. Leave it unset when browser `2.4.5` runs with `CAMOFOX_AUTH_MODE=disabled`.
+- `CAMOFOX_API_KEY` only if your browser server is configured to require authentication. Leave it unset when the browser runs with `CAMOFOX_AUTH_MODE=disabled`.
 
 ## Installation Methods
 
@@ -154,7 +154,7 @@ This shares the browser context/profile, but it does not reliably attach MCP to 
 
 If your browser server requires authentication, add `CAMOFOX_API_KEY` to the `env` block in both the browser server and the MCP client. This is separate from `CAMOFOX_HTTP_API_KEY`, which protects inbound HTTP MCP clients.
 
-For `camofox-browser` `2.4.5` trusted private agent networks where clients cannot send browser bearer tokens, run the browser server with `CAMOFOX_AUTH_MODE=disabled` and leave `CAMOFOX_API_KEY` unset in CamoFox MCP. CamoFox MCP will send no outbound browser auth headers in that setup. Keep the browser endpoint on a trusted private network and do not expose it to untrusted clients.
+For trusted private agent networks where clients cannot send browser bearer tokens, run the browser server with `CAMOFOX_AUTH_MODE=disabled` and leave `CAMOFOX_API_KEY` unset in CamoFox MCP. CamoFox MCP will send no outbound browser auth headers in that setup. Keep the browser endpoint on a trusted private network and do not expose it to untrusted clients.
 
 ## Verify Setup
 
