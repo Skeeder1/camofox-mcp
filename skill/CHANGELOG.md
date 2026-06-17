@@ -2,6 +2,11 @@
 
 All notable changes to this ClawHub skill package will be documented in this file.
 
+## [1.14.5] - 2026-06-17
+
+- Updated package metadata from 1.14.4 to 1.14.5.
+- Updated compatibility guidance to recommend `camofox-browser` 2.4.6+ so fresh installs use the Camoufox-compatible Playwright protocol dependency.
+
 ## [1.14.4] - 2026-05-25
 
 - Updated package metadata from 1.14.3 to 1.14.4.

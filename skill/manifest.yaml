@@ -1,5 +1,5 @@
 name: camofox-mcp
-version: 1.14.4
+version: 1.14.5
 description: Anti-detection browser MCP server for AI agents — navigate, interact, and automate the web without getting blocked
 author: redf0x1
 license: MIT
@@ -22,10 +22,10 @@ server:
 prerequisites:
   - name: CamoFox Browser
     required: true
-    description: CamoFox Browser server 2.4.5+ is recommended for explicit browser auth modes (default http://localhost:9377)
+    description: CamoFox Browser server 2.4.6+ is recommended so fresh installs use the Camoufox-compatible Playwright protocol dependency (default http://localhost:9377)
   - name: Start command
     required: true
-    description: Start MCP server in HTTP mode with CAMOFOX_TRANSPORT=http npx camofox-mcp@1.14.4
+    description: Start MCP server in HTTP mode with CAMOFOX_TRANSPORT=http npx camofox-mcp@1.14.5
 
 tools:
   - name: server_status

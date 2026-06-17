@@ -1,7 +1,7 @@
 ---
 name: skill
 title: CamoFox MCP for OpenClaw
-version: 1.14.4
+version: 1.14.5
 description: Anti-detection browser automation MCP skill for OpenClaw agents with 47 tools for navigation, interaction, observation, extraction, downloads, profiles, sessions, and stealth web search.
 author: redf0x1
 tags:
@@ -16,7 +16,7 @@ license: MIT
 homepage: https://github.com/redf0x1/camofox-mcp#readme
 metadata:
   title: CamoFox MCP for OpenClaw
-version: 1.14.4
+version: 1.14.5
   author: redf0x1
   tags:
     - mcp
@@ -48,21 +48,21 @@ Most browser automation flows eventually hit CAPTCHAs, fingerprint checks, or bo
 ### 1) Start CamoFox Browser
 
 CamoFox Browser must be running first (default `http://localhost:9377`).
-Use `camofox-browser` `2.4.5` or newer for explicit browser auth modes. Browser `2.4.4` or newer also ensures the first opened tab reuses the browser's initial blank page instead of leaving an extra empty window.
+Use `camofox-browser` `2.4.6` or newer so fresh installs pin the Camoufox-compatible Playwright protocol dependency. Browser `2.4.5` introduced explicit browser auth modes, and browser `2.4.4` fixed first-tab reuse for persistent contexts.
 
 ### 2) Start CamoFox MCP in HTTP mode
 
 ```bash
-CAMOFOX_TRANSPORT=http npx camofox-mcp@1.14.4
+CAMOFOX_TRANSPORT=http npx camofox-mcp@1.14.5
 ```
 
 Optional examples:
 
 ```bash
-CAMOFOX_TRANSPORT=http CAMOFOX_API_KEY=browser-server-key npx camofox-mcp@1.14.4
-CAMOFOX_TRANSPORT=http CAMOFOX_HTTP_HOST=0.0.0.0 CAMOFOX_HTTP_API_KEY=replace-with-32-plus-random-chars npx camofox-mcp@1.14.4
-CAMOFOX_TRANSPORT=http CAMOFOX_HTTP_PORT=8080 npx camofox-mcp@1.14.4
-CAMOFOX_VIEWPORT=1366x768 npx camofox-mcp@1.14.4
+CAMOFOX_TRANSPORT=http CAMOFOX_API_KEY=browser-server-key npx camofox-mcp@1.14.5
+CAMOFOX_TRANSPORT=http CAMOFOX_HTTP_HOST=0.0.0.0 CAMOFOX_HTTP_API_KEY=replace-with-32-plus-random-chars npx camofox-mcp@1.14.5
+CAMOFOX_TRANSPORT=http CAMOFOX_HTTP_PORT=8080 npx camofox-mcp@1.14.5
+CAMOFOX_VIEWPORT=1366x768 npx camofox-mcp@1.14.5
 ```
 
 For browser `CAMOFOX_AUTH_MODE=disabled` on a trusted private agent network,

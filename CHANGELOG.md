@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [1.14.5] - 2026-06-17
 
 ### Compatibility
 - Recommend `camofox-browser` `2.4.6` or newer so MCP users avoid fresh-install first-tab crashes from incompatible Playwright protocol dependency resolution. CamoFox MCP itself remains an HTTP client and does not depend on `playwright-core`.
