@@ -1,0 +1,11 @@
+[Unit]
+Description=Probe the CamoFox MCP contract and the browser behind it
+
+[Service]
+Type=oneshot
+# Checks both layers. The adapter can answer MCP perfectly while
+# camofox-browser is gone, in which case every navigation fails and nothing
+# would otherwise restart.
+ExecStart=/usr/bin/node /opt/camofox-mcp/scripts/healthcheck.mjs \
+          --url http://127.0.0.1:8101/mcp --quiet
+ExecStopPost=/bin/sh -c 'test "$$EXIT_STATUS" = "0" || systemctl --user restart camofox-mcp.service'

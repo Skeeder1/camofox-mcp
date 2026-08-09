@@ -80,3 +80,18 @@ docker run -p 3000:3000 --rm \
 - [Quickstart](quickstart.md)
 - [MCP Server](mcp-server.md)
 - [Architecture](architecture/index.md)
+
+## Unattended reliability
+
+`systemctl is-active` only proves the adapter PID exists. The browser server
+behind it fails independently: the MCP handshake keeps succeeding, `tools/list`
+keeps returning every tool, and every navigation fails.
+
+```bash
+node scripts/healthcheck.mjs                      # 0 healthy, 1 broken, 2 unreachable
+node scripts/healthcheck.mjs --allow-browser-down # adapter-only
+```
+
+Ready-made systemd units are in [`deploy/`](../deploy/) — see
+[`deploy/README.md`](../deploy/README.md). The healthcheck timer probes both
+layers and restarts the server only on a genuine failure.

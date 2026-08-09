@@ -1,0 +1,32 @@
+[Unit]
+Description=CamoFox MCP Server (HTTP transport, port 8101)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/camofox-mcp
+ExecStart=/usr/bin/node dist/http.js --port 8101 --host 127.0.0.1
+Restart=on-failure
+RestartSec=5
+
+# Where the browser server lives. Setting this makes the MCP server spawn and
+# warm camofox-browser itself, so the first tool call does not pay cold start.
+Environment=CAMOFOX_BROWSER_SERVER_PATH=/opt/camofox-browser/dist/src/server.js
+Environment=CAMOFOX_URL=http://localhost:9377
+Environment=NODE_ENV=production
+
+# Bind to loopback AND require a token: an open port means anyone who reaches
+# it can browse the web through this machine.
+Environment=CAMOFOX_HTTP_API_KEY=change-me
+Environment=CAMOFOX_HTTP_ALLOWED_HOSTS=localhost,127.0.0.1
+
+# lean exposes core+semantic only. Prefer it for agents: 58 tools is a lot of
+# tool-schema to put in a model's context on every request.
+Environment=CAMOFOX_PROFILE=lean
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target
