@@ -5,6 +5,10 @@ import { okResult, toErrorResult } from "../errors.js";
 import { getTrackedTab, incrementToolCall } from "../state.js";
 import type { ToolDeps } from "../server.js";
 
+const structuredExtractionSchema = z
+  .record(z.string(), z.unknown())
+  .describe("Structured extraction schema understood by camofox-browser");
+
 export function registerExtractionTools(server: McpServer, deps: ToolDeps): void {
   server.tool(
     "extract_resources",
@@ -61,6 +65,38 @@ export function registerExtractionTools(server: McpServer, deps: ToolDeps): void
           resolveBlobs: parsed.resolveBlobs,
           triggerLazyLoad: parsed.triggerLazyLoad,
           maxDepth: parsed.maxDepth
+        });
+        incrementToolCall(parsed.tabId);
+        return okResult(result);
+      } catch (error) {
+        return toErrorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "extract_structured",
+    "Extract deterministic structured JSON from a page using the camofox-browser structured extraction schema.",
+    {
+      tabId: z.string().min(1).describe("Tab ID from create_tab"),
+      userId: z.string().min(1).optional().describe("User ID override (default: tracked tab userId)"),
+      schema: structuredExtractionSchema
+    },
+    async (input: unknown) => {
+      try {
+        const parsed = z
+          .object({
+            tabId: z.string().min(1).describe("Tab ID from create_tab"),
+            userId: z.string().min(1).optional().describe("User ID override (default: tracked tab userId)"),
+            schema: structuredExtractionSchema
+          })
+          .parse(input);
+
+        const tracked = getTrackedTab(parsed.tabId);
+        const userId = parsed.userId ?? tracked.userId;
+        const result = await deps.client.extractStructured(parsed.tabId, {
+          userId,
+          schema: parsed.schema
         });
         incrementToolCall(parsed.tabId);
         return okResult(result);

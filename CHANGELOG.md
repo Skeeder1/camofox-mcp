@@ -1,5 +1,82 @@
 # Changelog
 
+## [1.14.5] - 2026-06-17
+
+### Compatibility
+- Recommend `camofox-browser` `2.4.6` or newer so MCP users avoid fresh-install first-tab crashes from incompatible Playwright protocol dependency resolution. CamoFox MCP itself remains an HTTP client and does not depend on `playwright-core`.
+
+## [1.14.4] - 2026-05-25
+
+### Compatibility
+- Documented `camofox-browser` `2.4.5` browser auth modes, including the trusted private-network `CAMOFOX_AUTH_MODE=disabled` setup where CamoFox MCP must leave `CAMOFOX_API_KEY` unset.
+
+### Changed
+- Clarified outbound browser authentication (`CAMOFOX_API_KEY`) versus inbound HTTP MCP authentication (`CAMOFOX_HTTP_API_KEY`) across package-facing docs.
+
+## [1.14.3] - 2026-05-24
+
+### Added
+- Added `CAMOFOX_VIEWPORT` / `--viewport` as a bounded default viewport for new tabs when `create_tab.viewport` is omitted.
+
+### Fixed
+- Ignored out-of-range configured default viewports instead of forwarding values outside the `create_tab` schema bounds.
+- Ignored non-positive numeric environment values for timeout, HTTP port, and HTTP rate limit, matching CLI validation behavior.
+- Treated `CAMOFOX_AUTO_SAVE=n` as false, matching CLI boolean parsing.
+
+## [1.14.2] - 2026-05-23
+
+### Compatibility
+- Recommend `camofox-browser` `2.4.4` or newer. Browser `2.4.4` fixes the persistent-context cold-start `about:blank` page reuse path, preventing a second window when opening the first tab through CLI or MCP.
+
+### Changed
+- Clarified `create_tab` guidance for sharing the camofox CLI default browser context with `userId: "cli-default"` and `sessionKey: "default"`.
+- Clarified that MCP can create a tracked tab in that shared context but cannot reliably attach to a tab that the CLI already opened.
+- Documented viewport/display-size control for wide headed windows, including `{ "width": 1366, "height": 768 }`.
+
+### Security
+- Updated the transitive runtime `qs` lockfile entry to `6.15.2` so `npm audit --audit-level=moderate` reports zero vulnerabilities.
+
+## [1.14.1] - 2026-05-13
+
+### Compatibility
+- Pair with `camofox-browser` `2.4.3` or newer for session-level `proxyProfile`/raw `proxy` egress, because `2.4.3` applies the resolved session proxy to browser context launch.
+
+### Changed
+- Public server metadata and skill docs now point to `camofox-mcp` `1.14.1`, superseding the pushed-but-unpublished `1.14.0` release tag.
+
+## [1.14.0] - 2026-05-13
+
+### Added
+- `extract_structured` tool for camofox-browser structured extraction schemas.
+- `create_tab` support for browser session `proxyProfile`, raw `proxy`, `geoMode`, and optional `sessionKey` reuse.
+- HTTP auth boundary regression coverage to verify unauthenticated `/mcp` requests are rejected before MCP tool-server creation.
+
+### Compatibility
+- Superseded before npm/GitHub release by `1.14.1`, which pairs this MCP surface with `camofox-browser` `2.4.3` for browser-side proxy launch wiring.
+
+### Changed
+- Public server metadata and skill docs now reflect 47 registered tools.
+
+### Security
+- Refreshed dev dependency lockfile entries so full `npm audit` reports zero vulnerabilities.
+
+## [1.13.2] - 2026-05-12
+
+### Added
+- `CAMOFOX_HTTP_API_KEY` for inbound HTTP MCP Bearer authentication.
+- `CAMOFOX_HTTP_ALLOWED_HOSTS` / `--http-allowed-hosts` for HTTP Host header allowlisting.
+- Private vulnerability reporting policy in `SECURITY.md`.
+
+### Fixed
+- HTTP transport now fails startup when bound beyond loopback without an inbound HTTP API key.
+- HTTP Bearer authentication now runs before `/mcp` JSON body parsing, reducing unauthenticated request handling surface.
+- `server_status` now distinguishes browser-server reachability from an active browser session.
+- Docker HTTP transport examples now use the image's `8080` container port and bind HTTP transport to `0.0.0.0` with inbound Bearer authentication.
+- Public server metadata now reflects the current release and 46 registered tools.
+
+### Security
+- Updated MCP SDK and HTTP rate-limit dependencies, plus transitive runtime packages, so `npm audit --omit=dev` reports zero vulnerabilities.
+
 ## [1.13.1] - 2026-03-08
 
 ### Added

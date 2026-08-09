@@ -57,6 +57,7 @@ describe("tools/extraction", () => {
     deps = {
       client: {
         extractResources: vi.fn(),
+        extractStructured: vi.fn(),
         batchDownload: vi.fn(),
         resolveBlobs: vi.fn()
       } as unknown as ToolDeps["client"],
@@ -150,6 +151,56 @@ describe("tools/extraction", () => {
       const payload = parseToolTextJson(result);
       expect(payload).toMatchObject({ isError: true, code: "INTERNAL_ERROR", message: "extract failed" });
       expect(getTrackedTab(tabId).toolCalls).toBe(0);
+    });
+  });
+
+  describe("extract_structured", () => {
+    it("calls client.extractStructured with schema and tracked user", async () => {
+      const tabId = "tab-structured";
+      createdTabIds.push(tabId);
+      trackTab(makeTab(tabId, { userId: "user-structured" }));
+
+      const schema = {
+        kind: "object",
+        selector: "#catalog",
+        fields: {
+          heading: { kind: "text", selector: "h1", required: true, trim: true }
+        }
+      };
+      const response = { ok: true, data: { heading: "Catalog" }, metadata: { matchedRoots: 1 } };
+      vi.mocked(deps.client.extractStructured).mockResolvedValueOnce(response as any);
+
+      const { server, getHandler } = makeServerCapture();
+      registerExtractionTools(server as unknown as Parameters<typeof registerExtractionTools>[0], deps);
+      const handler = getHandler("extract_structured");
+
+      const result = await handler({ tabId, schema });
+
+      expect(result.isError).toBeFalsy();
+      expect(parseToolTextJson(result)).toEqual(response);
+      expect(deps.client.extractStructured).toHaveBeenCalledWith(tabId, {
+        userId: "user-structured",
+        schema
+      });
+      expect(getTrackedTab(tabId).toolCalls).toBe(1);
+    });
+
+    it("allows userId override for extract_structured", async () => {
+      const tabId = "tab-structured-override";
+      createdTabIds.push(tabId);
+      trackTab(makeTab(tabId, { userId: "tracked-user" }));
+      vi.mocked(deps.client.extractStructured).mockResolvedValueOnce({ ok: true, data: {} } as any);
+
+      const { server, getHandler } = makeServerCapture();
+      registerExtractionTools(server as unknown as Parameters<typeof registerExtractionTools>[0], deps);
+      const handler = getHandler("extract_structured");
+
+      await handler({ tabId, userId: "override-user", schema: { kind: "object", fields: {} } });
+
+      expect(deps.client.extractStructured).toHaveBeenCalledWith(tabId, {
+        userId: "override-user",
+        schema: { kind: "object", fields: {} }
+      });
     });
   });
 

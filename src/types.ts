@@ -10,6 +10,9 @@ export interface Config {
   httpHost: string;
   httpRateLimit: number;
   browserServerPath?: string;
+  httpApiKey?: string;
+  httpAllowedHosts?: string[];
+  defaultViewport?: { width: number; height: number };
 }
 
 export interface HealthResponse {
@@ -21,6 +24,15 @@ export interface HealthResponse {
   activeOps?: number;
 }
 
+export type GeoMode = "explicit-wins" | "proxy-locked";
+
+export interface RawProxyOverride {
+  host: string;
+  port: string;
+  username?: string;
+  password?: string;
+}
+
 export interface CreateTabParams {
   userId: string;
   sessionKey: string;
@@ -30,6 +42,9 @@ export interface CreateTabParams {
   timezoneId?: string;
   geolocation?: { latitude: number; longitude: number };
   viewport?: { width: number; height: number };
+  proxyProfile?: string;
+  proxy?: RawProxyOverride;
+  geoMode?: GeoMode;
 }
 
 export interface PresetInfo {
@@ -153,6 +168,7 @@ export interface ToggleDisplayResponse {
   headless: boolean | "virtual";
   message: string;
   userId: string;
+  tabsInvalidated?: boolean;
   vncUrl?: string;
 }
 

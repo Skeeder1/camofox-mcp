@@ -84,18 +84,60 @@ describe("config", () => {
     expect(cfg.autoSave).toBe(true);
   });
 
+  it("loadConfig() parses default viewport from environment", () => {
+    const cfg = loadConfig([], {
+      CAMOFOX_VIEWPORT: "1366x768"
+    } as NodeJS.ProcessEnv);
+
+    expect(cfg.defaultViewport).toEqual({ width: 1366, height: 768 });
+  });
+
+  it("loadConfig() parses default viewport from CLI and gives CLI precedence", () => {
+    const cfg = loadConfig(["--viewport", "1440x900"], {
+      CAMOFOX_VIEWPORT: "1366x768"
+    } as NodeJS.ProcessEnv);
+
+    expect(cfg.defaultViewport).toEqual({ width: 1440, height: 900 });
+  });
+
+  it.each(["bad", "1366", "1366*768", "1366x", "x768"])(
+    "loadConfig() ignores invalid CAMOFOX_VIEWPORT format %s",
+    (val) => {
+      const cfg = loadConfig([], {
+        CAMOFOX_VIEWPORT: val
+      } as NodeJS.ProcessEnv);
+
+      expect(cfg.defaultViewport).toBeUndefined();
+    }
+  );
+
+  it.each(["319x768", "3841x768", "1366x239", "1366x2161", "1x1", "999999x999999"])(
+    "loadConfig() ignores out-of-range CAMOFOX_VIEWPORT %s",
+    (val) => {
+      const cfg = loadConfig([], {
+        CAMOFOX_VIEWPORT: val
+      } as NodeJS.ProcessEnv);
+
+      expect(cfg.defaultViewport).toBeUndefined();
+    }
+  );
+
   it("loadConfig() uses HTTP transport env var overrides", () => {
     const cfg = loadConfig([], {
       CAMOFOX_TRANSPORT: "http",
       CAMOFOX_HTTP_PORT: "8080",
       CAMOFOX_HTTP_HOST: "0.0.0.0",
-      CAMOFOX_HTTP_RATE_LIMIT: "120"
+      CAMOFOX_HTTP_RATE_LIMIT: "120",
+      CAMOFOX_HTTP_API_KEY: "0123456789abcdef0123456789abcdef",
+      CAMOFOX_HTTP_ALLOWED_HOSTS: "example.com, localhost "
     } as NodeJS.ProcessEnv);
 
     expect(cfg.transport).toBe("http");
     expect(cfg.httpPort).toBe(8080);
     expect(cfg.httpHost).toBe("0.0.0.0");
     expect(cfg.httpRateLimit).toBe(120);
+    expect(cfg.httpApiKey).toBe("0123456789abcdef0123456789abcdef");
+    expect(cfg.httpAllowedHosts).toEqual(["example.com", "localhost"]);
   });
 
   it("loadConfig() uses HTTP transport CLI arg overrides", () => {
@@ -108,7 +150,11 @@ describe("config", () => {
         "--http-host",
         "0.0.0.0",
         "--http-rate-limit",
-        "240"
+        "240",
+        "--http-api-key",
+        "abcdef0123456789abcdef0123456789",
+        "--http-allowed-hosts",
+        "mcp.example.com,localhost"
       ],
       {} as NodeJS.ProcessEnv
     );
@@ -117,6 +163,37 @@ describe("config", () => {
     expect(cfg.httpPort).toBe(9090);
     expect(cfg.httpHost).toBe("0.0.0.0");
     expect(cfg.httpRateLimit).toBe(240);
+    expect(cfg.httpApiKey).toBe("abcdef0123456789abcdef0123456789");
+    expect(cfg.httpAllowedHosts).toEqual(["mcp.example.com", "localhost"]);
+  });
+
+  it("loadConfig() rejects public HTTP bind without inbound HTTP API key", () => {
+    expect(() =>
+      loadConfig([], {
+        CAMOFOX_TRANSPORT: "http",
+        CAMOFOX_HTTP_HOST: "0.0.0.0"
+      } as NodeJS.ProcessEnv)
+    ).toThrow(/CAMOFOX_HTTP_API_KEY is required/i);
+  });
+
+  it("loadConfig() rejects weak inbound HTTP API keys", () => {
+    expect(() =>
+      loadConfig([], {
+        CAMOFOX_TRANSPORT: "http",
+        CAMOFOX_HTTP_HOST: "0.0.0.0",
+        CAMOFOX_HTTP_API_KEY: "short"
+      } as NodeJS.ProcessEnv)
+    ).toThrow(/at least 32 characters/i);
+  });
+
+  it("loadConfig() ignores short inbound HTTP API keys outside HTTP transport", () => {
+    const cfg = loadConfig([], {
+      CAMOFOX_TRANSPORT: "stdio",
+      CAMOFOX_HTTP_API_KEY: "short"
+    } as NodeJS.ProcessEnv);
+
+    expect(cfg.transport).toBe("stdio");
+    expect(cfg.httpApiKey).toBe("short");
   });
 
   it("loadConfig() defaults to stdio for invalid CAMOFOX_TRANSPORT", () => {
@@ -137,5 +214,25 @@ describe("config", () => {
 
     // CLI timeout ignored (0), env timeout invalid => default
     expect(cfg.timeout).toBe(30_000);
+  });
+
+  it("loadConfig() ignores non-positive numeric environment values", () => {
+    const cfg = loadConfig([], {
+      CAMOFOX_TIMEOUT: "0",
+      CAMOFOX_HTTP_PORT: "-1",
+      CAMOFOX_HTTP_RATE_LIMIT: "0"
+    } as NodeJS.ProcessEnv);
+
+    expect(cfg.timeout).toBe(30_000);
+    expect(cfg.httpPort).toBe(3000);
+    expect(cfg.httpRateLimit).toBe(60);
+  });
+
+  it("loadConfig() treats CAMOFOX_AUTO_SAVE=n as false", () => {
+    const cfg = loadConfig([], {
+      CAMOFOX_AUTO_SAVE: "n"
+    } as NodeJS.ProcessEnv);
+
+    expect(cfg.autoSave).toBe(false);
   });
 });
