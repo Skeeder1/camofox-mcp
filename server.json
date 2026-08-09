@@ -1,50 +1,51 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "camofox-mcp",
-  "description": "Anti-detection browser automation MCP server for AI agents. Exposes up to 57 tools through configurable core, semantic, and legacy layers.",
+  "description": "Anti-detection browser automation MCP server. 47 tools wrapping CamoFox REST API with stealth fingerprinting that passes bot detection.",
   "repository": {
     "url": "https://github.com/redf0x1/camofox-mcp",
     "source": "github"
   },
   "version_detail": {
-    "version": "1.13.1",
+    "version": "1.14.5",
+    "release_date": "2026-06-17",
     "is_stable": true
   },
   "packages": [
     {
       "registry_name": "npm",
       "name": "camofox-mcp",
-      "version": "1.13.1",
+      "version": "1.14.5",
       "runtime": "node",
       "runtime_arguments": [],
       "package_arguments": [],
       "environment_variables": [
         {
           "name": "CAMOFOX_URL",
-          "description": "CamoFox Browser server URL",
+          "description": "CamoFox server URL",
           "required": false,
           "default": "http://localhost:9377"
         },
         {
           "name": "CAMOFOX_TIMEOUT",
-          "description": "Request timeout in milliseconds",
+          "description": "Request timeout in ms",
           "required": false,
           "default": "30000"
         },
         {
           "name": "CAMOFOX_API_KEY",
-          "description": "Optional API key for CamoFox Browser authentication",
+          "description": "Optional outbound CamoFox Browser API key; leave unset when browser CAMOFOX_AUTH_MODE=disabled is used on a trusted private network",
           "required": false
         },
         {
           "name": "CAMOFOX_TRANSPORT",
-          "description": "MCP transport mode: stdio or http",
+          "description": "Transport mode: stdio or http",
           "required": false,
           "default": "stdio"
         },
         {
           "name": "CAMOFOX_HTTP_PORT",
-          "description": "HTTP server port for streamable HTTP transport",
+          "description": "HTTP server port for Streamable MCP transport",
           "required": false,
           "default": "3000"
         },
@@ -61,79 +62,78 @@
           "default": "60"
         },
         {
-          "name": "CAMOFOX_PROFILES_DIR",
-          "description": "Directory for saved session profiles",
-          "required": false,
-          "default": "~/.camofox-mcp/profiles"
+          "name": "CAMOFOX_HTTP_API_KEY",
+          "description": "Inbound HTTP MCP Bearer token; required when HTTP transport binds beyond loopback",
+          "required": false
         },
         {
-          "name": "CAMOFOX_PROFILE",
-          "description": "Tool profile: full, lean, or custom",
+          "name": "CAMOFOX_HTTP_ALLOWED_HOSTS",
+          "description": "Comma-separated Host header allowlist for HTTP transport",
+          "required": false
+        },
+        {
+          "name": "CAMOFOX_PROFILES_DIR",
+          "description": "Custom profiles directory for session persistence",
           "required": false,
-          "default": "full"
+          "default": "~/.camofox-mcp/profiles/"
+        },
+        {
+          "name": "CAMOFOX_VIEWPORT",
+          "description": "Default viewport size for new tabs in WIDTHxHEIGHT format (e.g., 1280x720). Width must be 320..3840 and height must be 240..2160.",
+          "required": false
         }
       ]
     }
   ],
   "tools": [
-    {"name": "server_status", "description": "Check browser-server health, connection state, and active tab count."},
-    {"name": "stop_browser", "description": "Gracefully shut down the CamoFox browser server."},
-    {"name": "create_tab", "description": "Create and track a new anti-detection browser tab."},
-    {"name": "close_tab", "description": "Close a tracked browser tab and optionally auto-save its profile."},
-    {"name": "list_tabs", "description": "List tracked browser tabs."},
-    {"name": "navigate", "description": "Navigate a tab to a URL."},
-    {"name": "go_back", "description": "Navigate backward in browser history."},
-    {"name": "go_forward", "description": "Navigate forward in browser history."},
-    {"name": "refresh", "description": "Reload the current tab."},
-    {"name": "import_cookies", "description": "Import cookies into a user session or tab."},
-    {"name": "get_stats", "description": "Return tab and browser-server statistics."},
-    {"name": "camofox_close_session", "description": "Close all tracked tabs for a logical user session."},
-    {"name": "toggle_display", "description": "Switch a user session between headless, headed, and virtual display modes."},
-    {"name": "set_task_context", "description": "Set task context for a tracked tab."},
-    {"name": "get_task_context", "description": "Get task context for a tracked tab."},
-    {"name": "diagnose_failure", "description": "Diagnose a failed browser task with tracked context."},
-    {"name": "save_profile", "description": "Save the current tab cookies to a named profile."},
-    {"name": "load_profile", "description": "Load a saved cookie profile into a tab."},
-    {"name": "list_profiles", "description": "List saved profiles."},
-    {"name": "delete_profile", "description": "Delete a saved profile."},
-    {"name": "list_downloads", "description": "List downloads with filters."},
-    {"name": "get_download", "description": "Return download metadata and optional inline content."},
-    {"name": "delete_download", "description": "Delete a download from disk and registry."},
-    {"name": "extract", "description": "Extract structured data from a page with an LLM-assisted workflow."},
-    {"name": "observe", "description": "Rank relevant interactive elements for an intent."},
-    {"name": "act", "description": "Plan and optionally execute a natural-language browser action."},
-    {"name": "find_element_by_prompt", "description": "Resolve an element ref or selector from a natural-language prompt."},
-    {"name": "execute", "description": "Run a typed deterministic action plan."},
-    {"name": "click", "description": "Click an element by snapshot ref or CSS selector."},
-    {"name": "type_text", "description": "Type text into an input by ref or selector."},
-    {"name": "scroll", "description": "Scroll the page."},
-    {"name": "camofox_scroll_element", "description": "Scroll a specific container element."},
-    {"name": "camofox_evaluate_js", "description": "Execute isolated JavaScript in the page context."},
-    {"name": "camofox_hover", "description": "Hover over an element."},
-    {"name": "camofox_wait_for", "description": "Wait for page readiness and optional network idle."},
-    {"name": "camofox_press_key", "description": "Press a keyboard key."},
-    {"name": "snapshot", "description": "Return an accessibility-tree snapshot with refs."},
-    {"name": "snapshot_dialog", "description": "Return a focused dialog snapshot."},
-    {"name": "camofox_get_page_html", "description": "Return rendered page HTML or selected element HTML."},
-    {"name": "camofox_query_selector", "description": "Inspect a CSS selector and optional attribute."},
-    {"name": "screenshot", "description": "Capture a PNG screenshot."},
-    {"name": "get_links", "description": "Extract links from a page or scoped container."},
-    {"name": "camofox_wait_for_text", "description": "Wait for text to appear."},
-    {"name": "camofox_wait_for_selector", "description": "Wait for a selector to appear."},
-    {"name": "smart_snapshot", "description": "Return an LLM-summarized compact page state."},
-    {"name": "extract_resources", "description": "Extract images, links, media, or documents from a DOM scope."},
-    {"name": "batch_download", "description": "Extract and download matching resources in one workflow."},
-    {"name": "resolve_blobs", "description": "Resolve blob URLs to downloadable data."},
-    {"name": "web_search", "description": "Run a built-in search workflow."},
-    {"name": "youtube_transcript", "description": "Fetch a YouTube transcript without opening a tab."},
-    {"name": "fill_form", "description": "Fill multiple fields and optionally submit."},
-    {"name": "type_and_submit", "description": "Type into one field and press a key."},
-    {"name": "navigate_and_snapshot", "description": "Navigate and return a snapshot."},
-    {"name": "scroll_and_snapshot", "description": "Scroll and return a snapshot."},
-    {"name": "camofox_scroll_element_and_snapshot", "description": "Scroll a container and return a snapshot."},
-    {"name": "batch_click", "description": "Click multiple targets and report per-click results."},
-    {"name": "list_presets", "description": "List CamoFox geo presets."}
+    {"name": "batch_click", "description": "Click multiple elements sequentially. Continues on error (clicks are independent). Returns per-click results."},
+    {"name": "camofox_close_session", "description": "Close all browser tabs for a user session. Use for complete cleanup when done with a browsing session.", "inputSchema": {"type": "object", "properties": {"tabId": {"type": "string", "description": "Any tab ID from the session to identify the user"}}, "required": ["tabId"], "additionalProperties": false}},
+    {"name": "camofox_evaluate_js", "description": "Execute JavaScript in the browser page context. Runs in isolated scope (invisible to page scripts — safe for anti-detection). Use for: extracting data not visible in accessibility snapshot, checking element properties, reading computed styles, manipulating DOM elements. Requires CAMOFOX_API_KEY to be configured."},
+    {"name": "camofox_get_page_html", "description": "Get rendered HTML from the live DOM. Use when accessibility snapshots miss dynamic or custom component content."},
+    {"name": "camofox_hover", "description": "Hover over an element to trigger tooltips, dropdown menus, or hover states. Use ref from snapshot or CSS selector.", "inputSchema": {"type": "object", "properties": {"tabId": {"type": "string", "description": "Tab ID"}, "ref": {"type": "string", "description": "Element ref from snapshot (e.g. 'e5')"}, "selector": {"type": "string", "description": "CSS selector (e.g. '#menu-item', '.dropdown-trigger')"}}, "required": ["tabId"], "additionalProperties": false}},
+    {"name": "camofox_press_key", "description": "Press a keyboard key. Use after type_text to submit forms (Enter), navigate between elements (Tab), move through suggestions (ArrowDown/ArrowUp), or dismiss dialogs (Escape). Common keys: Enter, Tab, Escape, ArrowDown, ArrowUp, Backspace, Space."},
+    {"name": "camofox_query_selector", "description": "Query a CSS selector in the live DOM and return element text, HTML, attributes, and visibility metadata."},
+    {"name": "camofox_scroll_element", "description": "Scroll a specific container element (modal dialog, scrollable div, sidebar). Use when page-level scroll doesn't reach content inside modals or overflow containers. Returns scroll position metadata to track progress."},
+    {"name": "camofox_scroll_element_and_snapshot", "description": "Scroll a container element AND take a snapshot. Combines scroll_element + snapshot in one call. Perfect for incrementally loading lazy content in modals (e.g. Facebook group post comments). Returns both scroll position and page snapshot."},
+    {"name": "camofox_wait_for", "description": "Wait for page to be fully ready (DOM loaded, network idle, framework hydration complete). Use after navigation or actions that trigger page changes.", "inputSchema": {"type": "object", "properties": {"tabId": {"type": "string", "description": "Tab ID"}, "timeout": {"type": "number", "description": "Timeout in ms (default: 10000)"}, "waitForNetwork": {"type": "boolean", "description": "Wait for network idle (default: true)"}}, "required": ["tabId"], "additionalProperties": false}},
+    {"name": "camofox_wait_for_selector", "description": "Wait for a CSS selector to appear in the live DOM. Useful for SPA and async-content workflows."},
+    {"name": "camofox_wait_for_text", "description": "Wait for specific text to appear on the page. Useful for waiting for search results, form submissions, or dynamic content loading.", "inputSchema": {"type": "object", "properties": {"tabId": {"type": "string", "description": "Tab ID"}, "text": {"type": "string", "description": "Text to wait for"}, "timeout": {"type": "number", "description": "Timeout in ms (default: 10000)"}}, "required": ["tabId", "text"], "additionalProperties": false}},
+    {"name": "click", "description": "Click an element. Provide either ref (from snapshot) or CSS selector. Use snapshot first to discover element refs."},
+    {"name": "close_tab", "description": "Close a browser tab and release resources. Always close tabs when done to free memory."},
+    {"name": "create_tab", "description": "Create a new browser tab with anti-detection fingerprinting. Supports URL, user/session isolation, viewport/display size, geo overrides, proxyProfile/raw proxy, and geoMode. To share the camofox CLI default browser profile/context, pass userId \"cli-default\" and sessionKey \"default\"; this creates a tracked MCP tab in that context but does not attach to a CLI tab that is already open."},
+    {"name": "delete_download", "description": "Delete a downloaded file from disk and registry"},
+    {"name": "fill_form", "description": "Fill multiple form fields in one call. Provide an array of field entries, each with a ref or CSS selector and the text to type. Optionally specify a submit button to click after filling."},
+    {"name": "batch_download", "description": "Extract resources from a DOM container and download them all. Combines extract_resources + download in one call. Useful for downloading all images from a chat, all PDFs from a table, etc."},
+    {"name": "extract_resources", "description": "Extract resources (images, links, media, documents) from a specific DOM container. Use a CSS selector or element ref from snapshot to scope extraction to a particular section of the page. This is useful for extracting all images from a specific post, all links from a table, etc."},
+    {"name": "extract_structured", "description": "Extract deterministic structured JSON from a page using the camofox-browser structured extraction schema."},
+    {"name": "get_download", "description": "Get a downloaded file. Images are always returned as viewable images. Recommended for AI agents: set includeContent=true to get non-image file content as base64 inline (max 256KB). Otherwise returns metadata only (including contentUrl)."},
+    {"name": "get_links", "description": "Get all hyperlinks on page with URLs and text. Useful for navigation discovery and site mapping."},
+    {"name": "get_stats", "description": "Get session statistics: request counts, active tabs, uptime, performance metrics."},
+    {"name": "go_back", "description": "Navigate backward in browser history (Back button). Returns new page URL."},
+    {"name": "go_forward", "description": "Navigate forward in browser history (Forward button). Returns new page URL."},
+    {"name": "import_cookies", "description": "Import cookies for authenticated sessions. Provide cookies as JSON string array. Restores login sessions without re-auth. Requires userId."},
+    {"name": "list_presets", "description": "List all available geo presets supported by the CamoFox server. Presets include locale, timezone, and optional geolocation."},
+    {"name": "list_downloads", "description": "List downloaded files with optional filtering by tab, status, extension, MIME type, and size range. Each download includes contentUrl for direct file retrieval."},
+    {"name": "save_profile", "description": "Export cookies from an active tab and save them to a named session profile on disk."},
+    {"name": "load_profile", "description": "Load a named session profile from disk and import its cookies into a tab's browser session."},
+    {"name": "list_profiles", "description": "List saved session profiles with basic metadata."},
+    {"name": "delete_profile", "description": "Delete a saved session profile from disk."},
+    {"name": "list_tabs", "description": "List all open browser tabs with URLs and titles. Use to discover available tabs or verify tab state."},
+    {"name": "navigate", "description": "Navigate a tab to a URL. Waits for page load. Use create_tab first, then navigate. Returns final URL (may differ due to redirects)."},
+    {"name": "navigate_and_snapshot", "description": "Navigate to a URL and return the page snapshot. Combines navigate + wait + snapshot into one call."},
+    {"name": "refresh", "description": "Reload the current page. Useful when page state is stale or after changes."},
+    {"name": "screenshot", "description": "Take visual screenshot as base64 PNG. Use ONLY for visual verification (CSS, layout, proof). Prefer snapshot for most tasks — much more token-efficient."},
+    {"name": "scroll", "description": "Scroll page up or down by pixel amount. Use to reveal content below the fold or navigate long pages."},
+    {"name": "scroll_and_snapshot", "description": "Scroll the page and take a snapshot. Useful for revealing content below the fold."},
+    {"name": "server_status", "description": "Check CamoFox server health and browser connection. Call first to verify server is running. Returns version, browser status, and active tab count."},
+    {"name": "snapshot", "description": "Get accessibility tree snapshot — the PRIMARY way to read page content. Returns element refs, roles, names and values. Token-efficient. Always prefer over screenshot. Element refs are used with click and type_text."},
+    {"name": "resolve_blobs", "description": "Resolve blob: URLs to downloadable base64 data. Blob URLs are temporary browser objects (common in Telegram, WhatsApp, Discord) that cannot be downloaded directly. This tool converts them to base64 data URIs."},
+    {"name": "toggle_display", "description": "Switch a user session between headless, headed, and virtual display modes and return a VNC URL when available."},
+    {"name": "type_and_submit", "description": "Type text into a field and press a key (default: Enter). Useful for search boxes and single-field forms."},
+    {"name": "type_text", "description": "Type text into an input field. Provide either a ref (from snapshot) or a CSS selector. Use ref when available; use selector as fallback when snapshot doesn't assign refs (common with combobox/autocomplete inputs). Call snapshot first to find target element."},
+    {"name": "web_search", "description": "Search the web via 14 engines: google, youtube, amazon, bing, duckduckgo, reddit, github, stackoverflow, wikipedia, twitter, linkedin, facebook, instagram, tiktok. Call snapshot after to read results."},
+    {"name": "youtube_transcript", "description": "Fetch a YouTube transcript without opening a browser tab."}
   ],
   "categories": ["browser-automation", "web-scraping"],
-  "tags": ["anti-detection", "stealth", "fingerprint", "camoufox", "ai-agent", "model-context-protocol"]
+  "tags": ["anti-detection", "stealth", "fingerprint", "camoufox", "playwright-alternative"]
 }

@@ -141,6 +141,34 @@ describe("client", () => {
     expect(result.result).toBe(2);
   });
 
+  it("createTab forwards userId, sessionKey, url, and viewport to the browser server", async () => {
+    const client = new CamofoxClient(makeConfig());
+
+    const fetchMock = vi.fn((async (url: string, init?: RequestInit) => {
+      expect(url).toBe("http://test:9377/tabs");
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        userId: "cli-default",
+        sessionKey: "default",
+        url: "http://localhost:8085",
+        viewport: { width: 1366, height: 768 }
+      });
+
+      return new Response(JSON.stringify({ tabId: "tab-cli", url: "http://localhost:8085" }), { status: 200 });
+    }) as typeof fetch);
+    globalThis.fetch = fetchMock;
+
+    const result = await client.createTab({
+      userId: "cli-default",
+      sessionKey: "default",
+      url: "http://localhost:8085",
+      viewport: { width: 1366, height: 768 }
+    });
+
+    expect(result).toMatchObject({ tabId: "tab-cli", url: "http://localhost:8085" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("successful request parses JSON response", async () => {
     const client = new CamofoxClient(makeConfig());
 
@@ -154,6 +182,32 @@ describe("client", () => {
       ok: true,
       browserConnected: true,
       version: "1.2.3"
+    });
+  });
+
+  it("extractStructured posts schema to the browser structured extraction endpoint", async () => {
+    const client = new CamofoxClient(makeConfig());
+    const schema = {
+      kind: "object",
+      fields: {
+        title: { kind: "text", selector: "h1" }
+      }
+    };
+
+    const fetchMock = vi.fn((async (url: string, init?: RequestInit) => {
+      expect(url).toBe("http://test:9377/tabs/tab-1/extract-structured");
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toEqual({
+        userId: "user-1",
+        schema
+      });
+      return new Response(JSON.stringify({ ok: true, data: { title: "Hello" } }), { status: 200 });
+    }) as typeof fetch);
+    globalThis.fetch = fetchMock;
+
+    await expect(client.extractStructured("tab-1", { userId: "user-1", schema })).resolves.toEqual({
+      ok: true,
+      data: { title: "Hello" }
     });
   });
 

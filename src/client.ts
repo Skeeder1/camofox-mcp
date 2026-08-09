@@ -213,6 +213,7 @@ const ToggleDisplayResponseSchema = z
     headless: z.union([z.boolean(), z.literal("virtual")]),
     message: z.string(),
     userId: z.string(),
+    tabsInvalidated: z.boolean().optional(),
     vncUrl: z.string().optional()
   })
   .passthrough();
@@ -944,6 +945,23 @@ export class CamofoxClient {
   ): Promise<any> {
     return this.requestJson(
       `/tabs/${encodeURIComponent(tabId)}/extract-resources`,
+      {
+        method: "POST",
+        body: JSON.stringify(params)
+      },
+      z.unknown()
+    );
+  }
+
+  async extractStructured(
+    tabId: string,
+    params: {
+      userId: string;
+      schema: Record<string, unknown>;
+    }
+  ): Promise<any> {
+    return this.requestJson(
+      `/tabs/${encodeURIComponent(tabId)}/extract-structured`,
       {
         method: "POST",
         body: JSON.stringify(params)
