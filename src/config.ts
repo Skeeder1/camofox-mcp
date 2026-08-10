@@ -69,7 +69,7 @@ function normalizeOptionalSecret(secret: string | undefined): string | undefined
   return trimmed ? trimmed : undefined;
 }
 
-function assertHttpConfigSafe(config: Pick<Config, "transport" | "httpHost" | "httpApiKey">): void {
+export function assertHttpConfigSafe(config: Pick<Config, "transport" | "httpHost" | "httpApiKey">): void {
   if (config.transport !== "http") {
     return;
   }
@@ -146,7 +146,11 @@ function parseCliArgs(argv: string[]): CliArgs {
       continue;
     }
 
-    if (current === "--http-port" && next) {
+    // `--port` / `--host` are accepted as aliases: they are the names everyone
+    // reaches for first, and silently ignoring them used to start the server on
+    // the default port 3000 while the operator believed it was on the one they
+    // passed.
+    if ((current === "--http-port" || current === "--port") && next) {
       const httpPort = Number.parseInt(next, 10);
       if (!Number.isNaN(httpPort) && httpPort > 0) {
         args.httpPort = httpPort;
@@ -155,7 +159,7 @@ function parseCliArgs(argv: string[]): CliArgs {
       continue;
     }
 
-    if (current === "--http-host" && next) {
+    if ((current === "--http-host" || current === "--host") && next) {
       args.httpHost = next;
       i += 1;
       continue;
@@ -186,6 +190,17 @@ function parseCliArgs(argv: string[]): CliArgs {
       args.defaultViewport = next;
       i += 1;
       continue;
+    }
+
+    // Anything else that looks like a flag was a misconfiguration the parser
+    // used to swallow in silence, leaving the server running on defaults the
+    // operator did not choose. Warn rather than throw, so an existing
+    // deployment passing a stale flag still starts.
+    if (current.startsWith("--")) {
+      console.error(
+        `[camofox-mcp] ⚠️  unrecognised option ${current} was ignored; ` +
+          `the server is using its default for that setting.`
+      );
     }
   }
 

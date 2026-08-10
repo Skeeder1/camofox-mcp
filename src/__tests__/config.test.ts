@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-import { loadConfig } from "../config.js";
+import { assertHttpConfigSafe, loadConfig } from "../config.js";
 
 describe("config", () => {
   it("loadConfig() returns defaults when no env/CLI provided", () => {
@@ -234,5 +234,50 @@ describe("config", () => {
     } as NodeJS.ProcessEnv);
 
     expect(cfg.autoSave).toBe(false);
+  });
+});
+
+describe("CLI flag handling regressions", () => {
+  it("accepts --port and --host as aliases", () => {
+    // These used to be swallowed, leaving the server on the default port 3000
+    // while the operator believed it was on the port they passed.
+    const config = loadConfig(["--port", "8101", "--host", "0.0.0.0"], {
+      CAMOFOX_HTTP_API_KEY: "x".repeat(32)
+    } as NodeJS.ProcessEnv);
+    expect(config.httpPort).toBe(8101);
+    expect(config.httpHost).toBe("0.0.0.0");
+  });
+
+  it("still accepts the canonical --http-port and --http-host", () => {
+    const config = loadConfig(["--http-port", "9001", "--http-host", "127.0.0.1"], {} as NodeJS.ProcessEnv);
+    expect(config.httpPort).toBe(9001);
+    expect(config.httpHost).toBe("127.0.0.1");
+  });
+
+  it("warns instead of silently ignoring an unknown flag", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    loadConfig(["--not-a-real-flag", "x"], {} as NodeJS.ProcessEnv);
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining("--not-a-real-flag"));
+    spy.mockRestore();
+  });
+});
+
+describe("HTTP safety guard reachability", () => {
+  it("rejects a short key once transport is http", () => {
+    expect(() =>
+      assertHttpConfigSafe({ transport: "http", httpHost: "127.0.0.1", httpApiKey: "too-short" })
+    ).toThrow(/at least 32 characters/);
+  });
+
+  it("rejects binding beyond loopback with no key", () => {
+    expect(() =>
+      assertHttpConfigSafe({ transport: "http", httpHost: "0.0.0.0", httpApiKey: undefined })
+    ).toThrow(/required when/);
+  });
+
+  it("allows loopback with no key", () => {
+    expect(() =>
+      assertHttpConfigSafe({ transport: "http", httpHost: "127.0.0.1", httpApiKey: undefined })
+    ).not.toThrow();
   });
 });

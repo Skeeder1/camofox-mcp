@@ -11,7 +11,7 @@ import type { Server as HttpServer } from "node:http";
 import { fileURLToPath } from "node:url";
 
 import { CamofoxClient } from "./client.js";
-import { isLoopbackHost, loadConfig } from "./config.js";
+import { assertHttpConfigSafe, isLoopbackHost, loadConfig } from "./config.js";
 import { createServer } from "./server.js";
 import { getAllTrackedTabs, removeTrackedTab, setupCleanup } from "./state.js";
 import type { Config } from "./types.js";
@@ -102,6 +102,13 @@ function isDirectExecution(): boolean {
 }
 
 export async function startHttpServer(config: Config = loadConfig()): Promise<void> {
+  // This entrypoint always serves HTTP, whatever `transport` says. loadConfig
+  // only runs its HTTP safety checks when transport === "http", which defaults
+  // to "stdio" -- so reaching here without re-asserting meant the checks were
+  // skipped entirely: a sub-32-char CAMOFOX_HTTP_API_KEY was accepted, and
+  // binding beyond loopback with no key at all raised nothing.
+  assertHttpConfigSafe({ ...config, transport: "http" });
+
   ensureHttpSignalHandlers();
   ensureCleanup(config);
 
