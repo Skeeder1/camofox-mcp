@@ -119,3 +119,24 @@ Selected with `CAMOFOX_PROFILE`, or per-layer flags, or a YAML config file.
 | Semantic tools need an LLM | With `CAMOFOX_LLM_ENABLED=false` they are unavailable; ref/selector tools still work | Enable sampling (`CAMOFOX_LLM_PREFER_SAMPLING=true`) for a key-free setup. |
 | Firefox version comes from `camofox-browser` | A build far behind release is a weak detection signal | Keep the `camofox-browser` dependency current. |
 | `full` profile exposes 58 tools | Large tool list in model context | Use `CAMOFOX_PROFILE=lean`. |
+
+---
+
+## Operational tooling
+
+| Script | Purpose |
+| --- | --- |
+| `scripts/healthcheck.mjs` | Probes both layers: the MCP contract, then `server_status` to confirm the browser answers. Exit 0 healthy, 1 reachable but broken or browser down, 2 unreachable. `--allow-browser-down` narrows it to an adapter-only check. |
+
+| Unit in `deploy/` | Cadence | Catches |
+| --- | --- | --- |
+| `camofox-mcp.service` | — | runs the adapter with warmup, loopback bind and the `lean` tool profile |
+| `camofox-healthcheck.timer` | 5 min | the adapter answering perfectly while the browser behind it is gone |
+
+## Hardening applied to the fork
+
+| Fix | Why it mattered |
+| --- | --- |
+| `startHttpServer` asserts the HTTP safety config itself | The guard was gated on `transport === "http"`, but `dist/http.js` serves HTTP while leaving transport at its `stdio` default — so a sub-32-char token was accepted and a non-loopback bind with no token raised nothing. |
+| `--port` / `--host` accepted as aliases | They were silently ignored, so the server bound its default port 3000 while the operator believed otherwise. |
+| Unrecognised `--flag` now warns | Previously dropped without a word, which is how the port bug stayed invisible. |
