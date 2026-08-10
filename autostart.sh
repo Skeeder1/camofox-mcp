@@ -3,11 +3,10 @@
 # Auto-starts camofox-browser if not running, then launches the MCP server.
 # A background watchdog stops the browser after IDLE_TIMEOUT seconds of no activity.
 #
-# Usage: called by Hermes mcp_servers config
 
 HEALTH_URL="http://localhost:9377/health"
-BROWSER_DIR="/home/openclaw/mcp/camofox-browser"
-MCP_BIN="/home/openclaw/mcp/camofox-mcp/dist/index.js"
+BROWSER_DIR="${CAMOFOX_BROWSER_DIR:-/opt/camofox-browser}"
+MCP_BIN="${CAMOFOX_MCP_DIR:-/opt/camofox-mcp}/dist/index.js"
 BROWSER_LOG="/tmp/camofox-browser.log"
 ACTIVITY_FILE="/tmp/camofox-last-activity"
 IDLE_TIMEOUT=600  # 10 minutes
@@ -67,7 +66,6 @@ idle_watchdog &
 WATCHDOG_PID=$!
 disown
 
-# Start the MCP server (blocks until Hermes closes it)
 node "$MCP_BIN"
 MCP_EXIT=$?
 

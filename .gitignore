@@ -5,5 +5,4 @@ dist/
 .DS_Store
 .claude
 AGENTS.md
-docs/
 CLAUDE.md

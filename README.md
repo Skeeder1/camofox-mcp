@@ -2,7 +2,7 @@
 
 [![Upstream](https://img.shields.io/badge/upstream-redf0x1%2Fcamofox--mcp%20v1.14.5-blue)](https://github.com/redf0x1/camofox-mcp)
 [![Tools](https://img.shields.io/badge/tools-58-green)](#tool-layers)
-[![Tests](https://img.shields.io/badge/tests-242%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-248%20passing-brightgreen)](#testing)
 
 A fork of [redf0x1/camofox-mcp](https://github.com/redf0x1/camofox-mcp) that adds
 a **built-in LLM layer**, so an agent can drive the browser by *intent* instead
@@ -39,15 +39,15 @@ there. This README covers **what the fork adds**.
 ### 1. Provider-agnostic LLM router
 
 [`src/llm/router.ts`](src/llm/router.ts) speaks to **Anthropic**, **OpenAI** and
-**OpenRouter**, or delegates to the MCP client itself via **sampling** — meaning
-the server can borrow the calling agent's model and need no API key at all.
+**OpenRouter** through a single OpenAI-compatible HTTP path, with a
+primary → fallback model chain and per-call telemetry (`ok` / `error` /
+`fallback_used` / `repaired`).
 
 ```bash
 CAMOFOX_LLM_ENABLED=true
-CAMOFOX_LLM_PROVIDER=anthropic          # anthropic | openai | openrouter
+CAMOFOX_LLM_PROVIDER=openrouter         # anthropic | openai | openrouter
 CAMOFOX_LLM_MODEL=claude-sonnet-5
 CAMOFOX_LLM_API_KEY=...                 # or ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY
-CAMOFOX_LLM_PREFER_SAMPLING=true        # ask the MCP client's model first
 CAMOFOX_LLM_FALLBACK_MODEL=...          # used when the primary fails
 CAMOFOX_LLM_VISION_MODEL=...            # for screenshot-based reasoning
 CAMOFOX_LLM_JSON_FORMAT=true            # request structured output natively
@@ -55,10 +55,6 @@ CAMOFOX_LLM_TIMEOUT=60000
 CAMOFOX_LLM_TEMPERATURE=0
 CAMOFOX_LLM_MAX_TOKENS=4096
 ```
-
-`CAMOFOX_LLM_PREFER_SAMPLING` is the interesting one: with an MCP client that
-supports sampling, the semantic tools work with **no API key and no extra cost
-beyond the agent's own tokens**.
 
 **JSON repair.** LLMs return almost-JSON often enough that
 [`src/llm/repair.ts`](src/llm/repair.ts) exists: it strips code fences, trailing
@@ -166,7 +162,8 @@ Register with an MCP client:
       "env": {
         "CAMOFOX_URL": "http://localhost:9377",
         "CAMOFOX_LLM_ENABLED": "true",
-        "CAMOFOX_LLM_PREFER_SAMPLING": "true",
+        "CAMOFOX_LLM_PROVIDER": "openrouter",
+        "CAMOFOX_LLM_API_KEY": "sk-or-...",
         "CAMOFOX_PROFILE": "lean"
       }
     }
@@ -227,3 +224,13 @@ and semantic-layer issues belong here.
 
 MIT, unchanged from upstream — Copyright (c) 2026 CamoFox MCP Contributors.
 Fork modifications by Skeeder1.
+
+## Roadmap
+
+- **MCP sampling.** Delegate LLM calls to the calling client's own model via the
+  MCP `sampling` capability, so the semantic tools would need no API key of their
+  own. The config surface (`CAMOFOX_LLM_PREFER_SAMPLING`) is stubbed; the
+  transport is not implemented yet.
+- **Native Anthropic transport.** The router currently speaks OpenAI-compatible
+  chat-completions to every provider through one HTTP path; a native
+  `/v1/messages` path would drop that compatibility assumption for Claude models.
