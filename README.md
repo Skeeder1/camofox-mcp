@@ -184,10 +184,13 @@ Secure it — inherited from upstream v1.14.5, and important, since an open port
 means anyone can browse through your machine:
 
 ```bash
-CAMOFOX_HTTP_API_KEY=...                       # bearer token on /mcp
+CAMOFOX_HTTP_API_KEY=...                       # bearer token on /mcp, min 32 chars
 CAMOFOX_HTTP_ALLOWED_HOSTS=localhost,127.0.0.1 # DNS-rebinding protection
 CAMOFOX_VIEWPORT=1280x720                      # default viewport for new tabs
 ```
+
+Binding `--http-host` beyond loopback without a token is refused outright, and
+a token shorter than 32 characters is rejected rather than quietly accepted.
 
 ---
 
