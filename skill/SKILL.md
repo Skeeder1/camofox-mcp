@@ -1,12 +1,11 @@
 ---
 name: skill
-title: CamoFox MCP for OpenClaw
+title: CamoFox MCP for AI agents
 version: 1.10.0
-description: Anti-detection browser automation MCP skill for OpenClaw agents with 41 tools for navigation, interaction, extraction, downloads, profiles, sessions, and stealth web search.
+description: Anti-detection browser automation MCP skill for AI agents with 41 tools for navigation, interaction, extraction, downloads, profiles, sessions, and stealth web search.
 author: redf0x1
 tags:
   - mcp
-  - openclaw
   - browser-automation
   - anti-detection
   - camofox
@@ -15,12 +14,11 @@ tags:
 license: MIT
 homepage: https://github.com/redf0x1/camofox-mcp#readme
 metadata:
-  title: CamoFox MCP for OpenClaw
+  title: CamoFox MCP for AI agents
   version: 1.10.0
   author: redf0x1
   tags:
     - mcp
-    - openclaw
     - browser-automation
     - anti-detection
     - camofox
@@ -31,7 +29,7 @@ metadata:
 
 # CamoFox MCP Skill
 
-CamoFox MCP gives OpenClaw agents a production-ready anti-detection browser automation toolkit over MCP HTTP transport. It connects OpenClaw to CamoFox Browser so agents can browse, click, type, extract content, manage cookies/sessions, run stealth search workflows, and download resources without the high block rates common with standard automation stacks.
+CamoFox MCP gives AI agents a production-ready anti-detection browser automation toolkit over MCP HTTP transport. It connects your agent to CamoFox Browser so agents can browse, click, type, extract content, manage cookies/sessions, run stealth search workflows, and download resources without the high block rates common with standard automation stacks.
 
 ## Why this skill exists
 
@@ -62,7 +60,7 @@ CAMOFOX_TRANSPORT=http CAMOFOX_API_KEY=your-key npx camofox-mcp@1.10.0
 CAMOFOX_TRANSPORT=http CAMOFOX_HTTP_PORT=8080 npx camofox-mcp@1.10.0
 ```
 
-### 3) Configure OpenClaw
+### 3) Configure your agent
 
 Add this MCP server:
 
@@ -241,4 +239,4 @@ Pattern to read the current value before acting:
 - Rich tool surface (41 tools) combining low-level controls + high-level workflows
 - Snapshot-first design that reduces token burn while preserving actionable context
 - Built-in profile/session controls for long-running authenticated automations
-- Native HTTP MCP endpoint for OpenClaw and remote MCP-compatible clients
+- Native HTTP MCP endpoint for your agent and remote MCP-compatible clients

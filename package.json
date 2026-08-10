@@ -38,14 +38,14 @@
     "vscode",
     "llm-tools"
   ],
-  "author": "redf0x1",
+  "author": "Skeeder1",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/redf0x1/camofox-mcp.git"
+    "url": "git+https://github.com/Skeeder1/camofox-mcp.git"
   },
-  "homepage": "https://github.com/redf0x1/camofox-mcp#readme",
+  "homepage": "https://github.com/Skeeder1/camofox-mcp#readme",
   "bugs": {
-    "url": "https://github.com/redf0x1/camofox-mcp/issues"
+    "url": "https://github.com/Skeeder1/camofox-mcp/issues"
   },
   "license": "MIT",
   "engines": {
@@ -74,5 +74,8 @@
     "tsx": "^4.0.0",
     "typescript": "^5.7.0",
     "vitest": "^4.0.18"
-  }
+  },
+  "contributors": [
+    "redf0x1 (original author)"
+  ]
 }
