@@ -206,7 +206,7 @@ a token shorter than 32 characters is rejected rather than quietly accepted.
 ## Testing
 
 ```bash
-npm test              # 242 tests
+npm test              # 248 tests
 npx tsc --noEmit      # type check
 ```
 
