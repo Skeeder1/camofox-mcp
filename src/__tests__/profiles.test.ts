@@ -278,7 +278,7 @@ describe("profiles", () => {
           timeout: 1000
         },
         client: {
-          importCookies: vi.fn(async () => undefined),
+          importCookies: vi.fn(async () => ({ imported: 1, skipped: 0 })),
           exportCookies: vi.fn(async () => [])
         }
       };

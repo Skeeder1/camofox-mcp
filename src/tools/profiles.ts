@@ -74,11 +74,17 @@ export function registerProfileTools(server: McpServer, deps: ToolDeps): void {
         const userMismatch = profile.userId !== tracked.userId;
 
         // Import cookies into the session
-        await deps.client.importCookies(tracked.userId, profile.cookies, tracked.tabId);
+        const { imported, skipped } = await deps.client.importCookies(
+          tracked.userId,
+          profile.cookies,
+          tracked.tabId
+        );
 
         return okResult({
           profileId: profile.profileId,
           cookieCount: profile.metadata.cookieCount,
+          imported,
+          ...(skipped > 0 ? { skipped, skippedNote: `${skipped} cookie(s) ignoré(s) : nom ou domaine vide (résidus de régies publicitaires)` } : {}),
           lastSaved: profile.metadata.updatedAt,
           description: profile.metadata.description,
           ...(userMismatch
