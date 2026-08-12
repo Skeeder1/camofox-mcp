@@ -1023,8 +1023,36 @@ export class CamofoxClient {
     return Array.isArray(response) ? response : response.cookies;
   }
 
-  async importCookies(userId: string, cookies: unknown[], tabId?: string): Promise<void> {
+  /** Keep only cookies the browser API will accept.
+   *
+   * A saved profile accumulates junk over months — ad networks leave cookies
+   * with an empty name or value. The browser validates the whole batch and
+   * rejects all of it on the first bad entry, so five dead ad cookies out of
+   * 849 make an entire authenticated session unrestorable. Dropping them is
+   * the only useful behaviour here; the caller is told how many went. */
+  static usableCookies(cookies: unknown[]): { usable: unknown[]; skipped: number } {
+    const usable = cookies.filter((c) => {
+      if (!c || typeof c !== "object") return false;
+      const r = c as Record<string, unknown>;
+      return (
+        typeof r.name === "string" && r.name.length > 0 &&
+        typeof r.value === "string" &&
+        typeof r.domain === "string" && r.domain.length > 0
+      );
+    });
+    return { usable, skipped: cookies.length - usable.length };
+  }
+
+  async importCookies(userId: string, cookiesInput: unknown[], tabId?: string): Promise<{ imported: number; skipped: number }> {
     const MAX_COOKIES_PER_REQUEST = 500;
+    const { usable: cookies, skipped } = CamofoxClient.usableCookies(cookiesInput);
+
+    if (cookies.length === 0) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        `No usable cookie in the ${cookiesInput.length} provided (each needs a non-empty name and domain, and a string value)`
+      );
+    }
 
     if (cookies.length <= MAX_COOKIES_PER_REQUEST) {
       await this.requestNoContent(`/sessions/${encodeURIComponent(userId)}/cookies`, {
@@ -1032,7 +1060,7 @@ export class CamofoxClient {
         body: JSON.stringify({ cookies, ...(tabId && { tabId }) }),
         requireApiKey: true
       });
-      return;
+      return { imported: cookies.length, skipped };
     }
 
     for (let i = 0; i < cookies.length; i += MAX_COOKIES_PER_REQUEST) {
@@ -1043,6 +1071,7 @@ export class CamofoxClient {
         requireApiKey: true
       });
     }
+    return { imported: cookies.length, skipped };
   }
 
   private async requestJson<T>(

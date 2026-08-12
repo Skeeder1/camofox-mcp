@@ -297,3 +297,20 @@ describe("client", () => {
     vi.unstubAllEnvs();
   });
 });
+
+describe("CamofoxClient.usableCookies", () => {
+  it("drops junk cookies instead of failing the whole profile", async () => {
+    const { CamofoxClient } = await import("../client.js");
+    const cookies = [
+      { name: "session", value: "abc", domain: ".leboncoin.fr" },
+      { name: "", value: "cadsync", domain: ".connectad.io" },
+      { name: "combined-leads", value: "", domain: ".autoscout24.fr" },
+      { name: "tok", value: "x", domain: "" },
+      "not-an-object"
+    ];
+    const { usable, skipped } = CamofoxClient.usableCookies(cookies);
+    // an empty value is legal for a cookie; an empty name or domain is not
+    expect(usable).toHaveLength(2);
+    expect(skipped).toBe(3);
+  });
+});
