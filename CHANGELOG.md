@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Streamable HTTP responses now declare `charset=utf-8`. The transport emitted a bare `text/event-stream`, so spec-compliant clients fell back to ISO-8859-1 and every non-ASCII character came back mangled — accents on French pages, CJK labels, currency symbols. Reproduced against `leboncoin.fr`: `DÃ©poser` instead of `Déposer`.
+
+### Changed
+- Documented the cold-start timeout. CamoFox can take ~25 s to launch the browser on the first call, which exceeds the 30 s default client timeout and surfaced as `TIMEOUT` on a perfectly healthy `create_tab`. Set `CAMOFOX_TIMEOUT` (ms) above the expected cold start.
+
+### Tests
+- N/A (configuration + transport header fix; covered by the existing HTTP transport tests).
+
 ## [1.14.5] - 2026-06-17
 
 ### Compatibility

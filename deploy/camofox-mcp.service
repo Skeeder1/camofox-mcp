@@ -13,6 +13,9 @@ RestartSec=5
 # Where the browser server lives. Setting this makes the MCP server spawn and
 # warm camofox-browser itself, so the first tool call does not pay cold start.
 Environment=CAMOFOX_BROWSER_SERVER_PATH=/opt/camofox-browser/dist/src/server.js
+# Secrets et modèles LLM hors du fichier d'unit (chmod 600)
+EnvironmentFile=-%h/.config/camofox-mcp.env
+
 Environment=CAMOFOX_URL=http://localhost:9377
 Environment=NODE_ENV=production
 

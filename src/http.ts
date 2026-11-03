@@ -176,6 +176,24 @@ export function createMcpHttpApp(config: Config): Express {
 
   app.use("/mcp", express.json());
 
+  // The Streamable HTTP transport emits `Content-Type: text/event-stream`
+  // without a charset. Per the HTTP spec, clients then fall back to
+  // ISO-8859-1 and every non-ASCII character (French accents, CJK, emoji)
+  // is mojibake on the client side. Force UTF-8 on the SSE response.
+  app.use("/mcp", (_req: any, res: any, next: any) => {
+    const originalSetHeader = res.setHeader.bind(res);
+    res.setHeader = (name: string, value: any) => {
+      if (String(name).toLowerCase() === "content-type") {
+        const v = Array.isArray(value) ? value.join(", ") : String(value);
+        if (v.startsWith("text/event-stream") && !/charset=/i.test(v)) {
+          return originalSetHeader(name, `${v}; charset=utf-8`);
+        }
+      }
+      return originalSetHeader(name, value);
+    };
+    next();
+  });
+
   app.post("/mcp", async (req: any, res: any) => {
     try {
       const { server } = createServer(config);
